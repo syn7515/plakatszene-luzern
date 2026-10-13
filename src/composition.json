@@ -171,7 +171,7 @@
     },
     {
       "id": "violet-pink-yellow",
-      "position": [-26, -28.4, -78],
+      "position": [-25, -28.1, -78],
       "rotation": [0, 19, 0],
       "curl": 0.89,
       "shape": {
@@ -190,7 +190,7 @@
     },
     {
       "id": "dark-beige",
-      "position": [-27.63, -13.5, -82.73],
+      "position": [-26.63, -13.5, -82.73],
       "rotation": [0, 0, 0],
       "curl": 1,
       "shape": {
@@ -204,7 +204,7 @@
     },
     {
       "id": "crescent-lavender",
-      "position": [-33.7, -15.2, -65.5],
+      "position": [-30.9, -15, -65.5],
       "rotation": [0, 175, 2.9],
       "curl": 1,
       "shape": {

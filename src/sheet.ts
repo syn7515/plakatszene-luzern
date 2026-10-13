@@ -51,6 +51,8 @@ export class Sheet {
   // Added to the curl the geometry is built with; the opening transition
   // eases a small unroll in and out through it, without the spring.
   curlOffset = 0;
+  // Every bend this much looser than drawn (negative: tighter); the breathing.
+  relax = 0;
   private readonly world: World;
   private guideCache: Guide | null = null;
 
@@ -151,6 +153,7 @@ export class Sheet {
       this.follows ? guide : undefined,
       this.extent,
       this.drooped,
+      this.relax,
     );
     if (this.follows) {
       // Where the anchored end ended up, so the editor can show it.

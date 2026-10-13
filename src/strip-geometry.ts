@@ -147,6 +147,7 @@ export class StripGeometry extends THREE.BufferGeometry {
   private curl = NaN;
   private extent = 1;
   private drooped = 0;
+  private relax = 0;
   private stale = true;
   private builtAgainst = -1;
   private readonly view = new THREE.Vector3();
@@ -195,21 +196,25 @@ export class StripGeometry extends THREE.BufferGeometry {
   // extent: how much of the paper exists yet, 0..1 from the anchored end; the
   // rest is gathered at the tip, so the sheet grows along its own path.
   // drooped: how far the corner has sagged, 0..1 (see Droop).
-  update(curl: number, towardsCamera: THREE.Vector3, guide?: Guide, extent = 1, drooped = 0) {
+  // relax: every bend this much looser than drawn (negative: tighter); the
+  // breathing of a settled sheet.
+  update(curl: number, towardsCamera: THREE.Vector3, guide?: Guide, extent = 1, drooped = 0, relax = 0) {
     const bent =
       this.stale ||
       curl !== this.curl ||
       extent !== this.extent ||
       drooped !== this.drooped ||
+      relax !== this.relax ||
       (guide ? guide.version !== this.builtAgainst : false);
-    if (bent) this.bend(curl, guide, extent, drooped);
+    if (bent) this.bend(curl, guide, extent, drooped, relax);
     if (bent || !this.view.equals(towardsCamera)) this.countFaces(towardsCamera);
   }
 
-  private bend(curl: number, guide?: Guide, extent = 1, drooped = 0) {
+  private bend(curl: number, guide?: Guide, extent = 1, drooped = 0, relax = 0) {
     this.curl = curl;
     this.extent = extent;
     this.drooped = drooped;
+    this.relax = relax;
     this.stale = false;
     this.version++;
     this.builtAgainst = guide?.version ?? -1;
@@ -259,7 +264,7 @@ export class StripGeometry extends THREE.BufferGeometry {
       if (!pull) return curl;
       return s >= Math.min(pull.from, pull.to) && s <= Math.max(pull.from, pull.to) ? curl : 1;
     };
-    const rate = (edge: Edge, s: number) => curvature(bends, edge, s) * engaged(edge, s) * tighten(s);
+    const rate = (edge: Edge, s: number) => curvature(bends, edge, s) * engaged(edge, s) * tighten(s) * (1 - relax);
 
     const trace = (edge: Edge, out: Float32Array, y: number) => {
       const at = { x: 0, z: 0, theta: 0 };

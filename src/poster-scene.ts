@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { collisionsOf } from './collisions.ts';
+import { collisionsOf, findCollisions } from './collisions.ts';
 import type { Composition } from './composition.ts';
 import { printUniforms } from './materials.ts';
 import { POSTER_SIZE, SURFACES } from './poster.ts';
@@ -23,13 +23,18 @@ const DIP = 0.25; // s, to the deepest point
 const RECOVER = 1.2; // s, back to rest
 const EASE = [0.55, 0, 0.15, 1] as const; // cubic-bezier control points
 
-// Settled, a sheet never quite holds still: it keeps breathing, the same
-// movement as its settling (a little unroll, or the corner dipping) at a
-// fraction of the size, slowly, each sheet to a rhythm of its own that
-// never quite repeats. It holds still while it is being pulled.
-const IDLE = 0.3; // of the settling movement
-const IDLE_PERIOD = 7; // s; each sheet breathes somewhere between this and twice it
-const IDLE_SECOND = 1.618; // the second, fainter wave is this much slower
+// Settled, a sheet never quite holds still: it keeps breathing, every bend
+// loosening a little and tightening again, slowly, each sheet to a rhythm
+// of its own that never quite repeats; a sheet with a drooping corner dips
+// that instead. How deep each one may breathe is decided before the
+// opening, all sheets at their deepest together, so that none meets
+// another. A sheet holds its breath while it is being pulled.
+const BREATH = 0.05; // every bend this much looser at the deepest breath
+const BREATH_REACH = 3; // cm; a sheet that would move further than this breathes shallower
+const BREATH_TIGHTER = 0.5; // of its breath, the other way, when loosening would hit something
+const BREATH_DROOP = 0.5; // of the corner's full droop
+const BREATH_PERIOD = 5; // s; each sheet breathes somewhere between this and twice it
+const BREATH_SECOND = 1.618; // the second, fainter wave is this much slower
 
 // A steady number in 0..1 from a sheet's id, so each sheet keeps its rhythm.
 function noise(id: string) {
@@ -69,6 +74,8 @@ export class PosterScene {
   // Leaders that have arrived and wait for their followers before breathing,
   // so the room is measured with everyone whole.
   private readonly waiting = new Set<Sheet>();
+  // How deep each sheet may breathe (relax, or drooped for a drooping corner).
+  private readonly breath = new Map<Sheet, number>();
   // Per settled sheet: seconds breathing, how far it may move, its two periods.
   private readonly breathing = new Map<Sheet, { time: number; amount: number; periods: [number, number] }>();
 
@@ -121,6 +128,8 @@ export class PosterScene {
   // Play the opening: sheets grow in from nothing, farthest first, followers
   // after the sheet they follow.
   startIntro() {
+    this.stage.camera.getWorldDirection(this.towardsCamera).negate();
+    this.planBreathing();
     const order = this.inBuildOrder();
     const depth = new Map(order.map((s) => [s, s.spec.position[2]]));
     const sorted = [...order].sort((a, b) => depth.get(a)! - depth.get(b)!);
@@ -155,7 +164,7 @@ export class PosterScene {
       if (sheet.extent < 1 && extent >= 1) {
         sheet.extent = extent;
         if (sheet.spec.droop || !hasFollowers.has(sheet)) {
-          this.settling.set(sheet, { time: 0, amount: this.room(sheet, leader?.guide(), 1) });
+          this.settling.set(sheet, { time: 0, amount: this.settleRoom(sheet, leader?.guide()) });
         } else {
           this.waiting.add(sheet);
         }
@@ -166,7 +175,7 @@ export class PosterScene {
     for (const sheet of this.waiting) {
       if (!this.followersOf(sheet).every((f) => f.extent >= 1)) continue;
       this.waiting.delete(sheet);
-      this.startBreathing(sheet, this.room(sheet, this.leaderOf(sheet)?.guide(), IDLE));
+      this.startBreathing(sheet);
     }
     if (done) this.intro = null;
   }
@@ -175,12 +184,10 @@ export class PosterScene {
     return this.sheets.filter((s) => s !== sheet && s.follows && this.leaderOf(s) === sheet);
   }
 
-  // How far a sheet may move without running through paper or the floor,
-  // at `scale` of the settling movement: the unroll, tried at its deepest;
-  // the other way (a little tighter) if that hits; nothing if both do. A
-  // sheet with a drooping corner dips that instead. Its followers move
-  // along with it, so they are checked too. Checked once, not every frame.
-  private room(sheet: Sheet, guide: ReturnType<Sheet['guide']> | undefined, scale: number) {
+  // Whether a movement leaves the sheet clear of paper and the floor: tried
+  // once at its deepest, then undone. Its followers move along with it, so
+  // they are checked too.
+  private clear(sheet: Sheet, guide: ReturnType<Sheet['guide']> | undefined, apply: () => void) {
     const followers = this.followersOf(sheet);
     const moving = new Set([sheet, ...followers]);
     const others = this.sheets.filter((s) => !moving.has(s));
@@ -188,20 +195,113 @@ export class PosterScene {
       sheet.update(0, this.towardsCamera, guide);
       for (const follower of followers) follower.update(0, this.towardsCamera, sheet.guide());
     };
-    const clear = (apply: () => void) => {
-      apply();
-      place();
-      let hits = collisionsOf(sheet, others, this.composition.floor).length;
-      for (const follower of followers) hits += collisionsOf(follower, others, this.composition.floor).length;
-      sheet.curlOffset = 0;
-      sheet.drooped = 0;
-      place();
-      return hits === 0;
-    };
-    if (sheet.spec.droop) return clear(() => (sheet.drooped = scale)) ? scale : 0;
-    if (clear(() => (sheet.curlOffset = SETTLE * scale))) return SETTLE * scale;
-    if (clear(() => (sheet.curlOffset = SETTLE_TIGHTER * scale))) return SETTLE_TIGHTER * scale;
+    apply();
+    place();
+    let hits = collisionsOf(sheet, others, this.composition.floor).length;
+    for (const follower of followers) hits += collisionsOf(follower, others, this.composition.floor).length;
+    sheet.curlOffset = 0;
+    sheet.drooped = 0;
+    sheet.relax = 0;
+    place();
+    return hits === 0;
+  }
+
+  // How far a sheet may settle: the full unroll; the other way (a little
+  // tighter) if that hits; nothing if both do. A sheet with a drooping
+  // corner dips that instead. Checked once, on arrival.
+  private settleRoom(sheet: Sheet, guide?: ReturnType<Sheet['guide']>) {
+    if (sheet.spec.droop) return this.clear(sheet, guide, () => (sheet.drooped = 1)) ? 1 : 0;
+    if (this.clear(sheet, guide, () => (sheet.curlOffset = SETTLE))) return SETTLE;
+    if (this.clear(sheet, guide, () => (sheet.curlOffset = SETTLE_TIGHTER))) return SETTLE_TIGHTER;
     return 0;
+  }
+
+  // Decide how deep each sheet breathes, with every sheet whole and at rest:
+  // BREATH, or less where that would carry any of its paper further than
+  // BREATH_REACH (a drooping corner dips BREATH_DROOP regardless). Then all
+  // at their deepest together: wherever paper meets paper or the floor, the
+  // sheet that moves further breathes the other way, and if it still meets,
+  // not at all. Followers move with the sheet they follow, so that sheet
+  // answers for them.
+  private planBreathing() {
+    const order = this.inBuildOrder();
+    const place = (sheets: Sheet[]) => {
+      for (const s of sheets) s.update(0, this.towardsCamera, s.follows ? this.leaderOf(s)?.guide() : undefined);
+    };
+    const set = (sheet: Sheet, amount: number) => {
+      if (sheet.spec.droop) sheet.drooped = Math.max(amount, 0);
+      else sheet.relax = amount;
+    };
+    const group = (sheet: Sheet) => order.filter((s) => s === sheet || this.leads(sheet, s));
+    const edges = (sheet: Sheet) => {
+      const g = sheet.guide();
+      return [g.bottom.slice(), g.top.slice()];
+    };
+    // How far any point of the sheet moves at this amount.
+    const reach = (sheet: Sheet, amount: number) => {
+      set(sheet, 0);
+      place(group(sheet));
+      const [b0, t0] = edges(sheet);
+      set(sheet, amount);
+      place(group(sheet));
+      const [b1, t1] = edges(sheet);
+      set(sheet, 0);
+      let far = 0;
+      for (const [a, b] of [[b0, b1], [t0, t1]]) {
+        for (let i = 0; i < a.length; i += 3) far = Math.max(far, Math.hypot(a[i] - b[i], a[i + 1] - b[i + 1], a[i + 2] - b[i + 2]));
+      }
+      return far;
+    };
+
+    this.breath.clear();
+    const reaches = new Map<Sheet, number>();
+    for (const sheet of order) {
+      const full = sheet.spec.droop ? BREATH_DROOP : BREATH;
+      const far = reach(sheet, full);
+      const amount = !sheet.spec.droop && far > BREATH_REACH ? (full * BREATH_REACH) / far : full;
+      this.breath.set(sheet, amount);
+      reaches.set(sheet, (far * amount) / full);
+    }
+    // The sheets whose breathing moves `s`: itself, and whatever it follows,
+    // however far up, as long as they breathe.
+    const movers = (s: Sheet) => {
+      const found: Sheet[] = [];
+      for (let at: Sheet | undefined = s, i = 0; at && i < order.length; at = at.follows ? this.leaderOf(at) : undefined, i++) {
+        if (this.breath.get(at)) found.push(at);
+      }
+      return found;
+    };
+    for (let round = 0; round < 2 * order.length; round++) {
+      for (const [sheet, amount] of this.breath) set(sheet, amount);
+      place(order);
+      const hits = findCollisions(this.sheets, this.composition.floor);
+      if (hits.length === 0) break;
+      const blamed = new Set<Sheet>();
+      for (const { a, b } of hits) {
+        const culprits = [...new Set([...movers(a), ...movers(b)])];
+        if (culprits.length === 0) continue;
+        blamed.add(culprits.reduce((x, y) => (reaches.get(y)! > reaches.get(x)! ? y : x)));
+      }
+      if (blamed.size === 0) break;
+      for (const sheet of blamed) {
+        const amount = this.breath.get(sheet)!;
+        const next = amount > 0 && !sheet.spec.droop ? -amount * BREATH_TIGHTER : 0;
+        this.breath.set(sheet, next);
+        reaches.set(sheet, (reaches.get(sheet)! * Math.abs(next)) / Math.abs(amount));
+      }
+    }
+    for (const sheet of order) set(sheet, 0);
+    place(order);
+  }
+
+  // Whether `s` follows `leader`, directly or through others.
+  private leads(leader: Sheet, s: Sheet) {
+    const seen = new Set<Sheet>();
+    for (let at = s.follows ? this.leaderOf(s) : undefined; at && !seen.has(at); at = at.follows ? this.leaderOf(at) : undefined) {
+      if (at === leader) return true;
+      seen.add(at);
+    }
+    return false;
   }
 
   // One settling movement on arrival: out quickly over DIP seconds, back
@@ -220,10 +320,7 @@ export class PosterScene {
         if (x >= 1) {
           amount = 0;
           this.settling.delete(sheet);
-          // Settled: carry on breathing within the room the settling had, or
-          // look for a little where it had none.
-          const room = state.amount !== 0 ? state.amount * IDLE : this.room(sheet, this.leaderOf(sheet)?.guide(), IDLE);
-          this.startBreathing(sheet, room);
+          this.startBreathing(sheet);
         }
       }
       if (sheet.spec.droop) sheet.drooped = amount * state.amount;
@@ -231,10 +328,11 @@ export class PosterScene {
     }
   }
 
-  private startBreathing(sheet: Sheet, amount: number) {
+  private startBreathing(sheet: Sheet) {
+    const amount = this.breath.get(sheet) ?? 0;
     if (amount === 0) return;
-    const period = IDLE_PERIOD * (1 + noise(sheet.spec.id));
-    this.breathing.set(sheet, { time: 0, amount, periods: [period, period * IDLE_SECOND] });
+    const period = BREATH_PERIOD * (1 + noise(sheet.spec.id));
+    this.breathing.set(sheet, { time: 0, amount, periods: [period, period * BREATH_SECOND] });
   }
 
   // The breathing: two slow waves, both starting from rest so it takes over
@@ -247,7 +345,7 @@ export class PosterScene {
       const wave = (period: number) => (1 - Math.cos((2 * Math.PI * state.time) / period)) / 2;
       const amount = state.amount * (0.6 * wave(state.periods[0]) + 0.4 * wave(state.periods[1]));
       if (sheet.spec.droop) sheet.drooped = amount;
-      else sheet.curlOffset = amount;
+      else sheet.relax = amount;
     }
   }
 
