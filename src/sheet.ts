@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { labelSize, printLabel, type LabelPrint } from './label.ts';
+import { labelSize, printLabel, WEIGHT_DARK_ON_LIGHT, WEIGHT_LIGHT_ON_DARK, type LabelPrint } from './label.ts';
 import { createPaperMaterial, setFace } from './materials.ts';
-import { SURFACES, type SurfaceName } from './poster.ts';
+import { lightness, SURFACES, type SurfaceName } from './poster.ts';
 import { Spring } from './spring.ts';
 import { StripGeometry, paperLength, type Droop, type Follow, type Guide, type Pull, type StripShape } from './strip-geometry.ts';
 
@@ -367,16 +367,28 @@ export class Sheet {
       vertical,
     };
 
-    const text = `${title}\n${year}`;
+    // Set to read the same on the face it lands on: a step bolder where
+    // dark type goes on a light ground.
+    const surface = this.surfaceAt(this.geometry.faceAt(Math.round(this.placed.at / ds)));
+    const weight = lightness(surface.ink) < lightness(surface.ground) ? WEIGHT_DARK_ON_LIGHT : WEIGHT_LIGHT_ON_DARK;
+    const text = `${title}\n${year}\n${weight}`;
     if (!this.print || this.print.vertical !== vertical || this.printed !== text) {
       this.print?.texture.dispose();
-      this.print = printLabel(title, year, vertical);
+      this.print = printLabel(title, year, vertical, weight);
       this.printed = text;
       u.uLabel.value = this.print.texture;
     }
     const { at, y: py, side } = this.placed;
     u.uLabelRect.value.set(at / length, py / height, (at + size.width) / length, (py + size.height) / height);
     u.uLabelSide.value = side === 'front' ? 1 : -1;
+  }
+
+  // What a visible face is printed as; faces past the listed ones repeat
+  // the last pair, as the shader does.
+  private surfaceAt(face: number) {
+    const { faces } = this.spec;
+    const i = face < faces.length ? face : Math.max(0, faces.length - 2 + (face % 2));
+    return SURFACES[faces[i] ?? faces[faces.length - 1]];
   }
 
   // This sheet's edges in world space, for the sheets that follow it.

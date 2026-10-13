@@ -16,6 +16,12 @@ export const INK = {
 
 const channels = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
 
+// How light a colour reads, 0..1.
+export function lightness(hex: string) {
+  const [r, g, b] = channels(hex);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 // Ink printed on top of ink. Multiplying the sRGB values reproduces the scan's
 // darks: green × violet = #001923 against the scanned #021927.
 export function overprint(a: string, b: string): string {

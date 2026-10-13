@@ -24,8 +24,11 @@ export interface LabelPrint {
 }
 
 const px = (cm: number) => Math.round(cm * DENSITY);
-const WEIGHT = 400; // regular: lighter than the original's bold, at this size
-const font = `${WEIGHT} ${px(CAP / CAP_RATIO)}px ${FONT}`;
+// Light type on a dark ground looks heavier than dark type on a light one,
+// so the latter is set one step bolder to read the same.
+export const WEIGHT_LIGHT_ON_DARK = 400;
+export const WEIGHT_DARK_ON_LIGHT = 500;
+const font = (weight: number) => `${weight} ${px(CAP / CAP_RATIO)}px ${FONT}`;
 
 let scratch: CanvasRenderingContext2D | null = null;
 const measure = (text: string, font: string) => {
@@ -34,9 +37,11 @@ const measure = (text: string, font: string) => {
   return scratch.measureText(text).width / DENSITY; // cm
 };
 
-// The block of text, in cm, before any turning: lines along x, read along y.
+// The block of text, in cm, before any turning: lines along x, read along
+// y. Measured at the bolder weight so the size does not depend on the face.
 function block(title: string, year: number) {
-  const width = Math.max(measure(title, font), measure(String(year), font)) + 2 * PAD;
+  const bold = font(WEIGHT_DARK_ON_LIGHT);
+  const width = Math.max(measure(title, bold), measure(String(year), bold)) + 2 * PAD;
   const height = CAP + GAP + CAP + 2 * PAD;
   return { width, height };
 }
@@ -47,7 +52,7 @@ export function labelSize(title: string, year: number, vertical: boolean) {
   return vertical ? { width: height, height: width } : { width, height };
 }
 
-export function printLabel(title: string, year: number, vertical: boolean): LabelPrint {
+export function printLabel(title: string, year: number, vertical: boolean, weight: number): LabelPrint {
   const { width, height } = block(title, year);
   const canvas = document.createElement('canvas');
   canvas.width = px(vertical ? height : width);
@@ -59,7 +64,7 @@ export function printLabel(title: string, year: number, vertical: boolean): Labe
     ctx.rotate(-Math.PI / 2);
   }
   ctx.textBaseline = 'alphabetic';
-  ctx.font = font;
+  ctx.font = font(weight);
   const lines: [string, number][] = [
     [title, px(PAD + CAP)],
     [String(year), px(PAD + CAP + GAP + CAP)],

@@ -182,6 +182,11 @@ export class StripGeometry extends THREE.BufferGeometry {
 
   // Bottom and top edge points (x, y, z) of every station, as last built; the
   // paper runs straight between each pair.
+  // The visible face (see countFaces) that the paper belongs to at a station.
+  faceAt(station: number) {
+    return this.faces[4 * Math.min(Math.max(0, station), SEGMENTS - 1)];
+  }
+
   get edges(): { bottom: Readonly<Float32Array>; top: Readonly<Float32Array> } {
     return { bottom: this.bottom, top: this.top };
   }
