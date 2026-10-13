@@ -11,13 +11,17 @@ uniform float uHalo[FACES]; // 1 where the dots give way around the text
 uniform float uSaturation; // 1 = printed as it is, 0 = drained and lifted
 #define LIFT 0.5 // how far a drained colour's lightness rises towards white (in gamma space)
 
-// The label (red: the text, green: a halo around it that is kept free of
-// dots on faces with uHalo), printed on one side of the paper inside
-// uLabelRect (u0, v0, u1, v1), fading in as a whole.
+// The label, a signed distance field of its letters (0.5 at an edge, more
+// inside, LABEL_SPREAD cm either way), printed on one side of the paper
+// inside uLabelRect (u0, v0, u1, v1), fading in as a whole. The edges are
+// drawn a pixel wide here, so they stay sharp at any size; around the
+// letters, out to LABEL_HALO cm, a dot screen gives way on faces with uHalo.
 uniform sampler2D uLabel;
 uniform vec4 uLabelRect;
 uniform float uLabelSide; // 1 = the front, -1 = the back, 0 = no label
 uniform float uReveal; // 0..1, its opacity
+#define LABEL_SPREAD 1.2 // cm; label.ts agrees
+#define LABEL_HALO 0.45 // cm; label.ts agrees
 
 varying float vFace; // constant across a segment
 varying vec2 vUv;
@@ -29,18 +33,17 @@ void main() {
 
   // The label is on one side of the paper; seen from the other it is not
   // there. Seen from the back, the paper's length runs the other way across
-  // the screen, so the mask is read mirrored to keep the text readable.
-  float text = 0.0; // how much of the text is here
-  float clear = 0.0; // how much the dots give way here
+  // the screen, so the field is read mirrored to keep the text readable.
+  // (Sampled and differentiated for every fragment, as derivatives want.)
   float side = gl_FrontFacing ? 1.0 : -1.0;
-  if (uLabelSide == side && uReveal > 0.0) {
-    vec2 p = (vUv - uLabelRect.xy) / (uLabelRect.zw - uLabelRect.xy);
-    if (side < 0.0) p.x = 1.0 - p.x;
-    float inside = step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0);
-    vec4 label = texture2D(uLabel, clamp(p, 0.0, 1.0)) * inside * uReveal;
-    text = label.r * label.a;
-    clear = min(1.0, label.r + label.g) * label.a;
-  }
+  vec2 p = (vUv - uLabelRect.xy) / (uLabelRect.zw - uLabelRect.xy);
+  p.x = side < 0.0 ? 1.0 - p.x : p.x;
+  float inside = step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0);
+  float dist = (0.5 - texture2D(uLabel, clamp(p, 0.0, 1.0)).r) * LABEL_SPREAD; // cm out from the letters
+  float pixel = max(fwidth(dist), 1e-4); // cm of distance across one screen pixel
+  float on = (uLabelSide == side ? 1.0 : 0.0) * inside * uReveal;
+  float text = clamp(0.5 - dist / pixel, 0.0, 1.0) * on; // how much of the letters is here
+  float clear = clamp(0.5 - (dist - LABEL_HALO) / pixel, 0.0, 1.0) * on; // how much the dots give way
 
   vec3 ink = mix(uGround[face], uDots[face], halftone(uTone[face]) * (1.0 - clear * uHalo[face]));
   ink = mix(ink, uInk[face], text);
