@@ -244,11 +244,13 @@ export class PosterScene {
 
   // Decide how deep each sheet breathes, with every sheet whole and at rest:
   // BREATH, or less where that would carry any of its paper further than
-  // BREATH_REACH (a drooping corner dips BREATH_DROOP regardless). Then all
-  // at their deepest together: wherever paper meets paper or the floor, the
-  // sheet that moves further breathes the other way, and if it still meets,
-  // not at all. Followers move with the sheet they follow, so that sheet
-  // answers for them.
+  // BREATH_REACH (a drooping corner dips BREATH_DROOP regardless). Each is
+  // then tried alone at its deepest, everything else at rest, and then all
+  // at their deepest together, since the sheets breathe out of step and
+  // either moment may bring paper against paper or the floor: wherever it
+  // does, the sheet that moves further (alone: that sheet) breathes the
+  // other way, and if it still meets, not at all. Followers move with the
+  // sheet they follow, so that sheet answers for them.
   private planBreathing() {
     const order = this.inBuildOrder();
     const place = (sheets: Sheet[]) => {
@@ -288,6 +290,29 @@ export class PosterScene {
       this.breath.set(sheet, amount);
       reaches.set(sheet, (far * amount) / full);
     }
+    // Whether the sheet, breathing this deep alone, stays clear of everything.
+    const floor = this.composition.floor;
+    const alone = (sheet: Sheet, amount: number) => {
+      const moving = group(sheet);
+      const others = order.filter((s) => !moving.includes(s));
+      set(sheet, amount);
+      place(moving);
+      let hits = 0;
+      for (const s of moving) hits += collisionsOf(s, others, floor).length;
+      set(sheet, 0);
+      place(moving);
+      return hits === 0;
+    };
+    // The next shallower breath for a sheet that met something: the other
+    // way, then none; each tried alone.
+    const relent = (sheet: Sheet) => {
+      const amount = this.breath.get(sheet)!;
+      let next = amount > 0 && !sheet.spec.droop ? -amount * BREATH_TIGHTER : 0;
+      if (next !== 0 && !alone(sheet, next)) next = 0;
+      this.breath.set(sheet, next);
+      reaches.set(sheet, (reaches.get(sheet)! * Math.abs(next)) / Math.abs(amount));
+    };
+    for (const sheet of order) if (!alone(sheet, this.breath.get(sheet)!)) relent(sheet);
     // The sheets whose breathing moves `s`: itself, and whatever it follows,
     // however far up, as long as they breathe.
     const movers = (s: Sheet) => {
@@ -309,12 +334,7 @@ export class PosterScene {
         blamed.add(culprits.reduce((x, y) => (reaches.get(y)! > reaches.get(x)! ? y : x)));
       }
       if (blamed.size === 0) break;
-      for (const sheet of blamed) {
-        const amount = this.breath.get(sheet)!;
-        const next = amount > 0 && !sheet.spec.droop ? -amount * BREATH_TIGHTER : 0;
-        this.breath.set(sheet, next);
-        reaches.set(sheet, (reaches.get(sheet)! * Math.abs(next)) / Math.abs(amount));
-      }
+      for (const sheet of blamed) relent(sheet);
     }
     for (const sheet of order) set(sheet, 0);
     place(order);
