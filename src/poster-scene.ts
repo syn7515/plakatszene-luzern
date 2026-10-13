@@ -40,8 +40,8 @@ const BREATH_SECOND = 1.618; // the second, fainter wave is this much slower
 // every other one, so the one under the hand stands out; pointing away
 // brings it all back. Colour drains and returns on this time constant.
 const FOCUS = 0.12; // s
-// The hovered sheet's label fades in on this time constant, in step with the focus.
-const REVEAL = 0.12; // s
+// The hovered sheet's label fades in on this time constant, quicker than the focus.
+const REVEAL = 0.06; // s
 // Labels go where the camera actually sees the paper: the scene is drawn
 // once, small, with every sheet in an id of its own and its depth.
 const SIGHT = 480; // px, the height of that drawing
