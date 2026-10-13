@@ -87,7 +87,7 @@
         ]
       },
       "faces": ["green", "darkGreen", "green", "darkGreen", "green", "darkGreen"],
-      "label": { "title": "Poster 005", "year": 2025 }
+      "label": { "title": "Poster 005", "year": 2025, "vertical": false }
     },
     {
       "id": "yellow-sheet",
