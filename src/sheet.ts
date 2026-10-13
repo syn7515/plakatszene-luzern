@@ -50,6 +50,16 @@ export interface LabelPlace {
 }
 
 const TOP = 1.5; // cm between the top edge and the label
+// cm a label keeps from where its stretch of paper ends or disappears (a
+// narrow label, read up the paper, keeps proportionally less).
+const END = 3;
+const END_SHARE = 0.35; // of the label's width, at most
+// How much of the paper's length the screen shows where a label goes:
+// seen nearly edge-on, text squeezes flat and stops reading. A stretch
+// counts up to where it falls under the first; the label's own stretch
+// must average the second.
+const MIN_FACING_RUN = 0.6;
+const MIN_FACING = 0.75;
 const MAX_TURN = 45; // degrees a label may wrap through along the paper before it goes vertical instead
 
 const towardsCameraLocal = new THREE.Vector3();
@@ -211,11 +221,12 @@ export class Sheet {
   // Put the label on the paper and print it there. Called with the sheet
   // whole and at rest; `seen` says whether the camera sees a world point of
   // this sheet. The label sits up against the top edge. It wants a stretch
-  // of one side that faces the camera, long enough for it, in plain sight,
-  // turning as little as possible and nearest the middle of that side, with
-  // room above the floor: along the paper if such a stretch turns less than
-  // MAX_TURN, else up the paper, else along the paper wherever it turns
-  // least and shows most. The spec may fix any of this instead.
+  // of one side that faces the camera, long enough for it, in plain sight
+  // and not seen too obliquely, turning as little as possible and nearest
+  // the middle of that side, with room above the floor: along the paper if
+  // such a stretch turns less than MAX_TURN, else up the paper, else along
+  // the paper wherever it turns least and shows best. The spec may fix any
+  // of this instead.
   placeLabel(towardsCamera: THREE.Vector3, seen: (point: THREE.Vector3) => boolean) {
     const u = this.mesh.material.uniforms;
     const label = this.spec.label;
@@ -232,13 +243,16 @@ export class Sheet {
     const { height } = this.spec.shape;
     const floor = this.world.floor;
 
-    // Per segment: which side faces the camera, and the turn from the one before, summed up.
+    // Per segment: which side faces the camera, the turn from the one
+    // before, and how much of its length the screen shows, both summed up.
     const facing = new Int8Array(stations);
     const turned = new Float32Array(stations + 1);
+    const shown = new Float32Array(stations + 1);
     const along = new THREE.Vector3();
     const prev = new THREE.Vector3();
     const up = new THREE.Vector3();
     const normal = new THREE.Vector3();
+    const view = towardsCamera.clone().normalize();
     for (let i = 0; i < stations; i++) {
       const [a, b] = [3 * i, 3 * (i + 1)];
       along.set(
@@ -254,6 +268,8 @@ export class Sheet {
       normal.crossVectors(along, up);
       facing[i] = Math.sign(normal.dot(towardsCamera));
       turned[i + 1] = turned[i] + (i > 0 ? THREE.MathUtils.radToDeg(prev.angleTo(along)) : 0);
+      const length = along.length();
+      shown[i + 1] = shown[i] + (length > 0 ? Math.sqrt(1 - Math.min(1, (along.dot(view) / length) ** 2)) : 1);
       prev.copy(along);
     }
     // Where the floor cuts the paper at a station, in cm up the paper.
@@ -282,11 +298,13 @@ export class Sheet {
       return seenAt;
     };
     // The runs of segments that show one side (and, strictly, that the
-    // camera sees): where each segment's run starts and ends.
+    // camera sees squarely enough): where each segment's run starts and ends.
+    const squareAt = (i: number) => shown[i + 1] - shown[i];
     const runs = (seenAt: Uint8Array | null) => {
       const start = new Int32Array(stations);
       const end = new Int32Array(stations);
-      const same = (i: number, j: number) => facing[j] === facing[i] && (!seenAt || seenAt[j] === 1);
+      const same = (i: number, j: number) =>
+        facing[j] === facing[i] && (!seenAt || (seenAt[j] === 1 && squareAt(j) >= MIN_FACING_RUN));
       for (let i = 0; i < stations; ) {
         let j = i;
         while (j < stations && same(i, j)) j++;
@@ -297,24 +315,30 @@ export class Sheet {
       return { start, end };
     };
     // The best start for a label w cm along and h cm up the paper: within
-    // one run, turning least and nearest the run's middle. Strictly, the
-    // run must be in sight and the label must fit under the top edge;
-    // otherwise hidden stretches only count against it.
+    // one run, turning least, seen most squarely and nearest the run's
+    // middle. Strictly, the run must be in sight, seen squarely enough,
+    // END cm longer than the label at both ends, and the label must fit
+    // under the top edge; otherwise those only count against it.
     const search = (w: number, h: number, strict: boolean) => {
       const n = Math.max(1, Math.ceil(w / ds));
+      const margin = Math.min(END, END_SHARE * w);
       const seenAt = sightAt(h);
       const { start, end } = runs(strict ? seenAt : null);
       let best: { i: number; turn: number; score: number } | null = null;
       for (let i = 0; i + n <= stations; i++) {
-        if (facing[i] === 0 || (strict && seenAt[i] === 0) || end[i] < i + n) continue;
+        if (facing[i] === 0 || (strict && (seenAt[i] === 0 || squareAt(i) < MIN_FACING_RUN)) || end[i] < i + n) continue;
         const c = i + n / 2;
         const y = yFor(i, n, h);
         if (strict && y + h > height - TOP + 0.01) continue; // pushed up by the floor: no room
         const turn = turned[i + n] - turned[i + 1];
-        const offCentre = 0.05 * Math.abs(c - (start[i] + end[i]) / 2) * ds;
+        const square = (shown[i + n] - shown[i]) / n;
+        if (strict && square < MIN_FACING) continue;
+        const offCentre = 1 * Math.abs(c - (start[i] + end[i]) / 2) * ds;
+        const nearEnd = 3 * Math.max(0, margin - Math.min(i - start[i], end[i] - i - n) * ds);
+        if (strict && nearEnd > 0) continue;
         let hidden = 0;
         if (!strict) for (let k = i; k <= i + n; k++) hidden += 1 - seenAt[k];
-        const score = turn + offCentre + (hidden / (n + 1)) * 200;
+        const score = turn + offCentre + nearEnd + (1 - square) * 60 + (hidden / (n + 1)) * 200;
         if (!best || score < best.score) best = { i, turn, score };
       }
       return best;

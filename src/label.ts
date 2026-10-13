@@ -1,14 +1,17 @@
 import * as THREE from 'three';
 
 // The label a sheet shows when pointed at: its title with its year under
-// it, set small, in a medium-weight grotesque like the original's. It is drawn
-// once, as an alpha mask on a canvas sized to the paper (DENSITY px per
-// cm), and the shader prints it on the paper in the face's ink.
-// Horizontal, the lines run along the paper; vertical, they read up the
-// paper (the title then stands as the left column).
+// it, set small in a grotesque like the original's. It is drawn once on a
+// canvas sized to the paper (DENSITY px per cm): the text in red, and in
+// green a halo around it, within which the shader leaves out the halftone
+// dots so that small type stays readable on a dot screen; the shader then
+// prints the text on the paper in the face's ink. Horizontal, the lines
+// run along the paper; vertical, they read up the paper (the title then
+// stands as the left column).
 export const CAP = 1.4; // cm, cap height of both lines
 const GAP = 0.7; // cm between the title and the year
-const PAD = 0.6; // cm of clear paper around the text
+const HALO = 0.45; // cm around the text kept free of dots (more than the dot pitch)
+const PAD = 0.6; // cm of clear paper around the text, beyond the halo's reach
 const DENSITY = 24; // texture px per cm
 const CAP_RATIO = 0.72; // cap height over font size, for Helvetica
 const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
@@ -55,11 +58,18 @@ export function printLabel(title: string, year: number, vertical: boolean): Labe
     ctx.translate(0, canvas.height);
     ctx.rotate(-Math.PI / 2);
   }
-  ctx.fillStyle = '#fff';
   ctx.textBaseline = 'alphabetic';
   ctx.font = font;
-  ctx.fillText(title, px(PAD), px(PAD + CAP));
-  ctx.fillText(String(year), px(PAD), px(PAD + CAP + GAP + CAP));
+  const lines: [string, number][] = [
+    [title, px(PAD + CAP)],
+    [String(year), px(PAD + CAP + GAP + CAP)],
+  ];
+  ctx.strokeStyle = '#0f0';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = px(2 * HALO);
+  for (const [text, baseline] of lines) ctx.strokeText(text, px(PAD), baseline);
+  ctx.fillStyle = '#f00';
+  for (const [text, baseline] of lines) ctx.fillText(text, px(PAD), baseline);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.anisotropy = 8;
