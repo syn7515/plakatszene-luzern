@@ -22,12 +22,10 @@ export function createPaperMaterial() {
       uInk: { value: Array.from({ length: FACES }, () => new THREE.Color()) },
       uSaturation: { value: 1 },
       // The label, where it lies on the paper (u0, v0, u1, v1), which side
-      // it is printed on (1 front, -1 back, 0 none), which way it reads
-      // (0 along the paper, 1 up it) and how much of it shows.
+      // it is printed on (1 front, -1 back, 0 none) and its opacity.
       uLabel: { value: null as THREE.Texture | null },
       uLabelRect: { value: new THREE.Vector4() },
       uLabelSide: { value: 0 },
-      uLabelAxis: { value: 0 },
       uReveal: { value: 0 },
     },
     vertexShader: paperVert,

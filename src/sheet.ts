@@ -85,7 +85,7 @@ export class Sheet {
   set saturation(value: number) {
     this.mesh.material.uniforms.uSaturation.value = value;
   }
-  // How much of the label shows, 0..1; it prints itself on hover.
+  // The label's opacity, 0..1; it fades in on hover.
   get reveal(): number {
     return this.mesh.material.uniforms.uReveal.value;
   }
@@ -353,7 +353,6 @@ export class Sheet {
     const { at, y: py, side } = this.placed;
     u.uLabelRect.value.set(at / length, py / height, (at + size.width) / length, (py + size.height) / height);
     u.uLabelSide.value = side === 'front' ? 1 : -1;
-    u.uLabelAxis.value = vertical ? 1 : 0;
   }
 
   // This sheet's edges in world space, for the sheets that follow it.

@@ -11,13 +11,11 @@ uniform float uSaturation; // 1 = printed as it is, 0 = drained and lifted
 #define LIFT 0.5 // how far a drained colour's lightness rises towards white (in gamma space)
 
 // The label (an alpha mask), printed on one side of the paper inside
-// uLabelRect (u0, v0, u1, v1), revealed along its reading direction.
+// uLabelRect (u0, v0, u1, v1), fading in as a whole.
 uniform sampler2D uLabel;
 uniform vec4 uLabelRect;
 uniform float uLabelSide; // 1 = the front, -1 = the back, 0 = no label
-uniform float uLabelAxis; // 0 = reads along the paper, 1 = up it
-uniform float uReveal; // 0..1
-#define REVEAL_EDGE 0.25 // of the label's length, the soft edge of the reveal
+uniform float uReveal; // 0..1, its opacity
 
 varying float vFace; // constant across a segment
 varying vec2 vUv;
@@ -38,9 +36,7 @@ void main() {
     if (side < 0.0) p.x = 1.0 - p.x;
     float inside = step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0);
     float mask = texture2D(uLabel, clamp(p, 0.0, 1.0)).a * inside;
-    float along = uLabelAxis < 0.5 ? p.x : p.y;
-    float shown = smoothstep(along, along + REVEAL_EDGE, uReveal * (1.0 + REVEAL_EDGE));
-    ink = mix(ink, uInk[face], mask * shown);
+    ink = mix(ink, uInk[face], mask * uReveal);
   }
   // Out of focus, the colour drains away, and what lightness is left is
   // lifted a little towards white, so the sheet recedes rather than dulls.
