@@ -36,7 +36,7 @@ const BREATH_DROOP = 0.5; // of the corner's full droop
 const BREATH_PERIOD = 5; // s; each sheet breathes somewhere between this and twice it
 const BREATH_SECOND = 1.618; // the second, fainter wave is this much slower
 
-// Once the opening has settled, pointing at a sheet drains the colour from
+// Once every sheet has grown in, pointing at a sheet drains the colour from
 // every other one, so the one under the hand stands out; pointing away
 // brings it all back. Colour drains and returns on this time constant.
 const FOCUS = 0.12; // s
@@ -78,7 +78,7 @@ export class PosterScene {
   // The sheet being pulled, if any: it may not pass through paper or the
   // floor, so each frame it is checked and, where it would, held back.
   held: Sheet | null = null;
-  // The sheet under the pointer, if any: once settled, the others lose their colour.
+  // The sheet under the pointer, if any: once the sheets are in, the others lose their colour.
   hovered: Sheet | null = null;
 
   private opened = false; // the opening has played through
@@ -201,9 +201,9 @@ export class PosterScene {
     }
   }
 
-  // The opening has played and every sheet has settled.
-  get settled() {
-    return this.opened && this.settling.size === 0 && this.waiting.size === 0;
+  // Every sheet has grown in: the opening is over, bar the last settling.
+  get ready() {
+    return this.opened;
   }
 
   private followersOf(sheet: Sheet) {
@@ -397,7 +397,7 @@ export class PosterScene {
 
   // The hovered sheet keeps its colour and every other one drains to grey.
   private focus(dt: number) {
-    const focused = this.settled ? this.hovered : null;
+    const focused = this.ready ? this.hovered : null;
     const k = 1 - Math.exp(-dt / FOCUS);
     const kr = 1 - Math.exp(-dt / REVEAL);
     for (const sheet of this.sheets) {
