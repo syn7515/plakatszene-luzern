@@ -15,16 +15,25 @@ const TAP_NUDGE = 4; // curl per second
 
 // Grab a sheet and pull along its length to unroll it; let go and its spring
 // rolls it back up, carrying the speed of the pull. A tap just nudges it.
-// Switch it off through the returned `enabled` flag.
+// `hover` hears which sheet is under the pointer whenever that changes (the
+// held one, while pulling). Switch it off through the returned `enabled` flag.
 export function enablePull(
   canvas: HTMLCanvasElement,
   camera: THREE.Camera,
   targets: () => PullTarget[],
   held: (target: PullTarget | null) => void = () => {},
+  hover: (target: PullTarget | null) => void = () => {},
 ) {
   const control = { enabled: true };
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
+
+  let over: PullTarget | null = null;
+  const setOver = (target: PullTarget | null) => {
+    if (target === over) return;
+    over = target;
+    hover(target);
+  };
 
   let drag: {
     target: PullTarget;
@@ -58,6 +67,7 @@ export function enablePull(
     if (!control.enabled) return;
     const target = targetAt(e);
     if (!target) return;
+    setOver(target);
     canvas.setPointerCapture(e.pointerId);
     target.spring.held = true;
     target.spring.velocity = 0;
@@ -78,7 +88,9 @@ export function enablePull(
 
   canvas.addEventListener('pointermove', (e) => {
     if (!drag) {
-      if (control.enabled) canvas.style.cursor = targetAt(e) ? 'grab' : '';
+      const target = control.enabled ? (targetAt(e) ?? null) : null;
+      canvas.style.cursor = target ? 'grab' : '';
+      setOver(target);
       return;
     }
     const { target, axis, history } = drag;
@@ -113,11 +125,16 @@ export function enablePull(
     }
 
     drag = null;
-    canvas.style.cursor = targetAt(e) ? 'grab' : '';
+    const under = targetAt(e) ?? null;
+    canvas.style.cursor = under ? 'grab' : '';
+    setOver(under);
   };
   canvas.addEventListener('pointerup', release);
   canvas.addEventListener('pointercancel', release);
   canvas.addEventListener('lostpointercapture', release);
+  canvas.addEventListener('pointerleave', () => {
+    if (!drag) setOver(null);
+  });
 
   return control;
 }

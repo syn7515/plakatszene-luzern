@@ -36,6 +36,11 @@ const BREATH_DROOP = 0.5; // of the corner's full droop
 const BREATH_PERIOD = 5; // s; each sheet breathes somewhere between this and twice it
 const BREATH_SECOND = 1.618; // the second, fainter wave is this much slower
 
+// Once the opening has settled, pointing at a sheet drains the colour from
+// every other one, so the one under the hand stands out; pointing away
+// brings it all back. Colour drains and returns on this time constant.
+const FOCUS = 0.12; // s
+
 // A steady number in 0..1 from a sheet's id, so each sheet keeps its rhythm.
 function noise(id: string) {
   let h = 5381;
@@ -67,7 +72,10 @@ export class PosterScene {
   // The sheet being pulled, if any: it may not pass through paper or the
   // floor, so each frame it is checked and, where it would, held back.
   held: Sheet | null = null;
+  // The sheet under the pointer, if any: once settled, the others lose their colour.
+  hovered: Sheet | null = null;
 
+  private opened = false; // the opening has played through
   private intro: { time: number; starts: Map<Sheet, number> } | null = null;
   // Per arriving sheet: seconds since arrival and how far it may move.
   private readonly settling = new Map<Sheet, { time: number; amount: number }>();
@@ -177,7 +185,15 @@ export class PosterScene {
       this.waiting.delete(sheet);
       this.startBreathing(sheet);
     }
-    if (done) this.intro = null;
+    if (done) {
+      this.intro = null;
+      this.opened = true;
+    }
+  }
+
+  // The opening has played and every sheet has settled.
+  get settled() {
+    return this.opened && this.settling.size === 0 && this.waiting.size === 0;
   }
 
   private followersOf(sheet: Sheet) {
@@ -349,10 +365,21 @@ export class PosterScene {
     }
   }
 
+  // The hovered sheet keeps its colour and every other one drains to grey.
+  private focus(dt: number) {
+    const focused = this.settled ? this.hovered : null;
+    const k = 1 - Math.exp(-dt / FOCUS);
+    for (const sheet of this.sheets) {
+      const want = focused === null || sheet === focused ? 1 : 0;
+      sheet.saturation += (want - sheet.saturation) * k;
+    }
+  }
+
   update(dt: number) {
     this.grow(dt);
     this.settle(dt);
     this.breathe(dt);
+    this.focus(dt);
     this.stage.camera.getWorldDirection(this.towardsCamera).negate();
     for (const sheet of this.inBuildOrder()) {
       const leader = sheet.follows ? this.leaderOf(sheet) : undefined;

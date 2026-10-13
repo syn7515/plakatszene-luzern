@@ -19,6 +19,7 @@ export function createPaperMaterial() {
       uGround: { value: Array.from({ length: FACES }, () => new THREE.Color()) },
       uDots: { value: Array.from({ length: FACES }, () => new THREE.Color()) },
       uTone: { value: Array.from({ length: FACES }, () => 0) },
+      uSaturation: { value: 1 },
     },
     vertexShader: paperVert,
     fragmentShader: halftone + paperFrag,

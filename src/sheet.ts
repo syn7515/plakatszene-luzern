@@ -53,6 +53,14 @@ export class Sheet {
   curlOffset = 0;
   // Every bend this much looser than drawn (negative: tighter); the breathing.
   relax = 0;
+
+  // 1 = printed as it is, 0 = drained to grey; the focus on a hovered sheet.
+  get saturation(): number {
+    return this.mesh.material.uniforms.uSaturation.value;
+  }
+  set saturation(value: number) {
+    this.mesh.material.uniforms.uSaturation.value = value;
+  }
   private readonly world: World;
   private guideCache: Guide | null = null;
 

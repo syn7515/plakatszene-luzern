@@ -7,9 +7,17 @@ import './style.css';
 const canvas = document.querySelector<HTMLCanvasElement>('#poster')!;
 const stage = createStage(canvas);
 const poster = new PosterScene(stage, initialComposition);
-const pull = enablePull(canvas, stage.camera, () => poster.sheets, (target) => {
-  poster.held = poster.sheets.find((s) => s === target) ?? null;
-});
+const pull = enablePull(
+  canvas,
+  stage.camera,
+  () => poster.sheets,
+  (target) => {
+    poster.held = poster.sheets.find((s) => s === target) ?? null;
+  },
+  (target) => {
+    poster.hovered = poster.sheets.find((s) => s === target) ?? null;
+  },
+);
 
 // Dev only: reach the scene from the console.
 if (import.meta.env.DEV) (window as unknown as { __poster: PosterScene }).__poster = poster;
