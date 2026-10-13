@@ -6,7 +6,7 @@
   "sheets": [
     {
       "id": "cup-violet-dark",
-      "position": [35.81, -20.7, -124.88],
+      "position": [35.71, -20.7, -124.88],
       "rotation": [0, 0, 0],
       "curl": 1,
       "shape": {
@@ -25,7 +25,7 @@
     },
     {
       "id": "cup-pink",
-      "position": [37.9, -38.1, -122.9],
+      "position": [37.8, -38, -122.9],
       "rotation": [0, -133, 0],
       "curl": 1,
       "shape": {
@@ -76,7 +76,7 @@
     },
     {
       "id": "white-dark-roll",
-      "position": [16.9, -40, -77.8],
+      "position": [16.9, -40, -77.9],
       "rotation": [0, 27, 0],
       "grounded": true,
       "curl": 0.51,
@@ -87,7 +87,7 @@
         ]
       },
       "faces": ["green", "darkGreen", "green", "darkGreen", "green", "darkGreen"],
-      "label": { "title": "Poster 005", "name": "Elin Ammann", "vertical": false }
+      "label": { "title": "Poster 005", "name": "Elin Ammann", "vertical": false, "at": 11, "y": 28.3, "side": "front" }
     },
     {
       "id": "yellow-sheet",
@@ -212,7 +212,7 @@
       },
       "faces": ["darkGreen", "green", "darkGreen", "beige", "darkGreen", "beige"],
       "follow": { "sheet": "violet-pink-yellow", "side": "back", "from": 0, "gap": 5, "stiffness": 0, "restTurn": 0, "tension": 0.5 },
-      "label": { "title": "Poster 012", "name": "Remo Zbinden" }
+      "label": { "title": "Poster 012", "name": "Remo Zbinden", "at": 47.5, "y": 28.3, "side": "back" }
     },
     {
       "id": "crescent-lavender",
@@ -278,7 +278,7 @@
     },
     {
       "id": "plakatsammlung",
-      "position": [-34.4, -40, -1.9],
+      "position": [-34.4, -40, -2],
       "rotation": [0, 19, 0],
       "curl": 0.88,
       "shape": {
