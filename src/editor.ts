@@ -373,14 +373,14 @@ export function startEditor(poster: PosterScene, stage: Stage, pull: { enabled: 
       .add(labelState, 'on')
       .name('라벨 있음')
       .onChange((on: boolean) => {
-        if (on) s.label = { title: `Poster ${String(poster.sheets.indexOf(sheet) + 1).padStart(3, '0')}`, year: 2020 };
+        if (on) s.label = { title: `Poster ${String(poster.sheets.indexOf(sheet) + 1).padStart(3, '0')}`, name: '' };
         else delete s.label;
         queueMicrotask(buildSheetFolder);
       });
     if (s.label) {
       const label = s.label;
       labelling.add(label, 'title').name('제목');
-      labelling.add(label, 'year', 2020, 2025, 1).name('연도');
+      labelling.add(label, 'name').name('이름');
       labelling
         .add(labelState, 'orientation', { 자동: 'auto', 가로: 'h', 세로: 'v' })
         .name('방향')

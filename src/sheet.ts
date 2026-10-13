@@ -31,11 +31,11 @@ export interface SheetSpec {
   label?: Label;
 }
 
-// A title and year printed on the paper, shown on hover. Where it goes the
+// A title and a name printed on the paper, shown on hover. Where it goes the
 // sheet works out itself unless the spec fixes it.
 export interface Label {
   title: string;
-  year: number;
+  name: string;
   vertical?: boolean; // reads up the paper instead of along it
   at?: number; // cm along the paper where it starts
   y?: number; // cm up from the bottom edge
@@ -344,8 +344,8 @@ export class Sheet {
       return best;
     };
 
-    const { title, year } = label;
-    const sizes = { along: labelSize(title, year, false), up: labelSize(title, year, true) };
+    const { title, name } = label;
+    const sizes = { along: labelSize(title, name, false), up: labelSize(title, name, true) };
     let vertical: boolean;
     let best: ReturnType<typeof search>;
     if (label.vertical !== undefined) {
@@ -371,10 +371,10 @@ export class Sheet {
     // dark type goes on a light ground.
     const surface = this.surfaceAt(this.geometry.faceAt(Math.round(this.placed.at / ds)));
     const weight = lightness(surface.ink) < lightness(surface.ground) ? WEIGHT_DARK_ON_LIGHT : WEIGHT_LIGHT_ON_DARK;
-    const text = `${title}\n${year}\n${weight}`;
+    const text = `${title}\n${name}\n${weight}`;
     if (!this.print || this.print.vertical !== vertical || this.printed !== text) {
       this.print?.texture.dispose();
-      this.print = printLabel(title, year, vertical, weight);
+      this.print = printLabel(title, name, vertical, weight);
       this.printed = text;
       u.uLabel.value = this.print.texture;
     }

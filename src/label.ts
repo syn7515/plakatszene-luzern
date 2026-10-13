@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// The label a sheet shows when pointed at: its title with its year under
+// The label a sheet shows when pointed at: its title with a name under
 // it, set small in a grotesque like the original's. It is drawn once on a
 // canvas sized to the paper (DENSITY px per cm) and turned into a signed
 // distance field: each texel holds how far it is from the nearest edge of
@@ -10,7 +10,7 @@ import * as THREE from 'three';
 // vertical, they read up the paper (the title then stands as the left
 // column).
 export const CAP = 1.4; // cm, cap height of both lines
-const GAP = 0.7; // cm between the title and the year
+const GAP = 0.7; // cm between the title and the name
 export const HALO = 0.45; // cm around the text kept free of dots (more than the dot pitch)
 const PAD = 0.6; // cm of clear paper around the text, beyond the halo's reach
 const DENSITY = 32; // texture px per cm
@@ -41,21 +41,21 @@ const measure = (text: string, font: string) => {
 
 // The block of text, in cm, before any turning: lines along x, read along
 // y. Measured at the bolder weight so the size does not depend on the face.
-function block(title: string, year: number) {
+function block(title: string, name: string) {
   const bold = font(WEIGHT_DARK_ON_LIGHT);
-  const width = Math.max(measure(title, bold), measure(String(year), bold)) + 2 * PAD;
+  const width = Math.max(measure(title, bold), measure(name, bold)) + 2 * PAD;
   const height = CAP + GAP + CAP + 2 * PAD;
   return { width, height };
 }
 
 // cm the label takes on the paper: along it and up it.
-export function labelSize(title: string, year: number, vertical: boolean) {
-  const { width, height } = block(title, year);
+export function labelSize(title: string, name: string, vertical: boolean) {
+  const { width, height } = block(title, name);
   return vertical ? { width: height, height: width } : { width, height };
 }
 
-export function printLabel(title: string, year: number, vertical: boolean, weight: number): LabelPrint {
-  const { width, height } = block(title, year);
+export function printLabel(title: string, name: string, vertical: boolean, weight: number): LabelPrint {
+  const { width, height } = block(title, name);
   const canvas = document.createElement('canvas');
   canvas.width = px(vertical ? height : width);
   canvas.height = px(vertical ? width : height);
@@ -69,7 +69,7 @@ export function printLabel(title: string, year: number, vertical: boolean, weigh
   ctx.font = font(weight);
   ctx.fillStyle = '#fff';
   ctx.fillText(title, px(PAD), px(PAD + CAP));
-  ctx.fillText(String(year), px(PAD), px(PAD + CAP + GAP + CAP));
+  ctx.fillText(name, px(PAD), px(PAD + CAP + GAP + CAP));
 
   const field = distanceField(ctx.getImageData(0, 0, canvas.width, canvas.height));
   const texture = new THREE.DataTexture(field, canvas.width, canvas.height, THREE.RedFormat, THREE.UnsignedByteType);
@@ -77,7 +77,7 @@ export function printLabel(title: string, year: number, vertical: boolean, weigh
   texture.minFilter = texture.magFilter = THREE.LinearFilter;
   texture.anisotropy = 8;
   texture.needsUpdate = true;
-  return { texture, ...labelSize(title, year, vertical), vertical };
+  return { texture, ...labelSize(title, name, vertical), vertical };
 }
 
 // The signed distance to the letters' edges, from their coverage: 0.5 at an
