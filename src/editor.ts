@@ -115,6 +115,8 @@ export function startEditor(poster: PosterScene, stage: Stage, pull: { enabled: 
   }
 
   poster.onUpdate = () => {
+    // The editor shows the selected sheet's label all the time, to place it.
+    for (const s of poster.sheets) s.reveal = s === selected ? 1 : 0;
     outline?.update();
     if (recheck) checkCollisions();
   };
@@ -357,6 +359,56 @@ export function startEditor(poster: PosterScene, stage: Stage, pull: { enabled: 
       pulling.add(s.pull, 'to', 0, total, 0.5).name('끝 (cm)');
       s.pull.topLag ??= TOP_LAG;
       pulling.add(s.pull as { topLag: number }, 'topLag', 0, 1, 0.05).name('윗선 말림 유지');
+    }
+
+    // The label shown on hover: its words, and where it is printed if the
+    // sheet's own choice is not wanted.
+    const labelling = folder.addFolder('라벨 (호버 때 보임)');
+    const labelState = {
+      on: !!s.label,
+      orientation: s.label?.vertical === undefined ? 'auto' : s.label.vertical ? 'v' : 'h',
+      manual: s.label?.at !== undefined,
+    };
+    labelling
+      .add(labelState, 'on')
+      .name('라벨 있음')
+      .onChange((on: boolean) => {
+        if (on) s.label = { title: `Poster ${String(poster.sheets.indexOf(sheet) + 1).padStart(3, '0')}`, year: 2020 };
+        else delete s.label;
+        queueMicrotask(buildSheetFolder);
+      });
+    if (s.label) {
+      const label = s.label;
+      labelling.add(label, 'title').name('제목');
+      labelling.add(label, 'year', 2020, 2025, 1).name('연도');
+      labelling
+        .add(labelState, 'orientation', { 자동: 'auto', 가로: 'h', 세로: 'v' })
+        .name('방향')
+        .onChange((v: string) => {
+          if (v === 'auto') delete label.vertical;
+          else label.vertical = v === 'v';
+        });
+      labelling
+        .add(labelState, 'manual')
+        .name('위치 직접 지정')
+        .onChange((on: boolean) => {
+          if (on) {
+            label.at = sheet.placed?.at ?? 0;
+            label.y = sheet.placed?.y ?? 0;
+            label.side = sheet.placed?.side ?? 'front';
+          } else {
+            delete label.at;
+            delete label.y;
+            delete label.side;
+          }
+          queueMicrotask(buildSheetFolder);
+        });
+      if (labelState.manual) {
+        const fixed = label as { at: number; y: number };
+        labelling.add(fixed, 'at', 0, total, 0.5).name('시작 (cm)');
+        labelling.add(fixed, 'y', 0, s.shape.height, 0.5).name('높이 (cm)');
+        labelling.add(label, 'side', { 앞면: 'front', 뒷면: 'back' }).name('면');
+      }
     }
 
     const form = folder.addFolder('형태');

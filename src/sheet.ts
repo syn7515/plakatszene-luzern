@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { labelSize, printLabel, type LabelPrint } from './label.ts';
 import { createPaperMaterial, setFace } from './materials.ts';
 import { SURFACES, type SurfaceName } from './poster.ts';
 import { Spring } from './spring.ts';
@@ -26,7 +27,31 @@ export interface SheetSpec {
   // A corner at the anchored end that can sag (see Droop); the opening
   // transition lets it dip and slowly recover instead of fluttering the roll.
   droop?: Droop;
+  // What the sheet says about itself when pointed at.
+  label?: Label;
 }
+
+// A title and year printed on the paper, shown on hover. Where it goes the
+// sheet works out itself unless the spec fixes it.
+export interface Label {
+  title: string;
+  year: number;
+  vertical?: boolean; // reads up the paper instead of along it
+  at?: number; // cm along the paper where it starts
+  y?: number; // cm up from the bottom edge
+  side?: 'front' | 'back';
+}
+
+export interface LabelPlace {
+  at: number;
+  y: number;
+  side: 'front' | 'back';
+  vertical: boolean;
+}
+
+const MARGIN = 3; // cm kept clear between a label and the paper's edges or the floor
+const MAX_TURN = 45; // degrees a label may wrap through along the paper before it goes vertical instead
+const SAMPLES = 5; // points along a label asked whether the camera sees them
 
 const towardsCameraLocal = new THREE.Vector3();
 const inverse = new THREE.Quaternion();
@@ -61,6 +86,18 @@ export class Sheet {
   set saturation(value: number) {
     this.mesh.material.uniforms.uSaturation.value = value;
   }
+  // How much of the label shows, 0..1; it prints itself on hover.
+  get reveal(): number {
+    return this.mesh.material.uniforms.uReveal.value;
+  }
+  set reveal(value: number) {
+    this.mesh.material.uniforms.uReveal.value = value;
+  }
+  // Where the label was put; null without one. Needs placing again after the spec changed.
+  placed: LabelPlace | null = null;
+  labelStale = true;
+  private print: LabelPrint | null = null;
+  private printed = '';
   private readonly world: World;
   private guideCache: Guide | null = null;
 
@@ -142,6 +179,7 @@ export class Sheet {
     this.spring.min = 0;
     this.spring.max = Infinity;
     this.safeCurl = NaN;
+    this.labelStale = true;
     faces.forEach((name, i) => setFace(this.mesh.material, i, SURFACES[name]));
 
     if (this.spring.target !== curl) {
@@ -169,6 +207,145 @@ export class Sheet {
       this.spec.position[0] = bottom[0];
       this.spec.position[2] = bottom[2];
     }
+  }
+
+  // Put the label on the paper and print it there. Called with the sheet
+  // whole and at rest; `seen` says whether the camera sees a world point of
+  // this sheet. The label sits up against the top edge. It wants a stretch
+  // of one side that faces the camera, long enough for it, in plain sight,
+  // turning as little as possible and nearest the middle of that side, with
+  // room above the floor: along the paper if such a stretch turns less than
+  // MAX_TURN, else up the paper, else along the paper wherever it turns
+  // least and shows most. The spec may fix any of this instead.
+  placeLabel(towardsCamera: THREE.Vector3, seen: (point: THREE.Vector3) => boolean) {
+    const u = this.mesh.material.uniforms;
+    const label = this.spec.label;
+    this.labelStale = false;
+    if (!label) {
+      u.uLabelSide.value = 0;
+      this.placed = null;
+      return;
+    }
+    const { bottom, top } = this.guide();
+    const stations = bottom.length / 3 - 1;
+    const ds = this.geometry.stationLength;
+    const length = this.paperLength();
+    const { height } = this.spec.shape;
+    const floor = this.world.floor;
+
+    // Per segment: which side faces the camera, and the turn from the one before, summed up.
+    const facing = new Int8Array(stations);
+    const turned = new Float32Array(stations + 1);
+    const along = new THREE.Vector3();
+    const prev = new THREE.Vector3();
+    const up = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+    for (let i = 0; i < stations; i++) {
+      const [a, b] = [3 * i, 3 * (i + 1)];
+      along.set(
+        (bottom[b] + top[b] - bottom[a] - top[a]) / 2,
+        (bottom[b + 1] + top[b + 1] - bottom[a + 1] - top[a + 1]) / 2,
+        (bottom[b + 2] + top[b + 2] - bottom[a + 2] - top[a + 2]) / 2,
+      );
+      up.set(
+        (top[a] + top[b] - bottom[a] - bottom[b]) / 2,
+        (top[a + 1] + top[b + 1] - bottom[a + 1] - bottom[b + 1]) / 2,
+        (top[a + 2] + top[b + 2] - bottom[a + 2] - bottom[b + 2]) / 2,
+      );
+      normal.crossVectors(along, up);
+      facing[i] = Math.sign(normal.dot(towardsCamera));
+      turned[i + 1] = turned[i] + (i > 0 ? THREE.MathUtils.radToDeg(prev.angleTo(along)) : 0);
+      prev.copy(along);
+    }
+    // The run of segments showing one side that each segment belongs to.
+    const runStart = new Int32Array(stations);
+    const runEnd = new Int32Array(stations);
+    for (let i = 0; i < stations; ) {
+      let j = i;
+      while (j < stations && facing[j] === facing[i]) j++;
+      runStart.fill(i, i, j);
+      runEnd.fill(j, i, j);
+      i = j;
+    }
+    // Where the floor cuts the paper at a station, in cm up the paper.
+    const floorAt = (i: number) => {
+      const [yb, yt] = [bottom[3 * i + 1], top[3 * i + 1]];
+      return THREE.MathUtils.clamp(((floor - yb) / (yt - yb)) * height, 0, height);
+    };
+    // Where a label h cm tall sits, starting at station i over n stations:
+    // up against the top edge, but never below the floor.
+    const yFor = (i: number, n: number, h: number) =>
+      Math.max(height - MARGIN - h, floorAt(Math.min(stations, Math.round(i + n / 2))));
+    // How many of SAMPLES points along the label's middle the camera sees.
+    const point = new THREE.Vector3();
+    const inSight = (i: number, n: number, y: number) => {
+      const f = y / height;
+      let count = 0;
+      for (let k = 0; k < SAMPLES; k++) {
+        const at = 3 * Math.min(stations, Math.round(i + (n * k) / (SAMPLES - 1)));
+        point.set(
+          bottom[at] + (top[at] - bottom[at]) * f,
+          bottom[at + 1] + (top[at + 1] - bottom[at + 1]) * f,
+          bottom[at + 2] + (top[at + 2] - bottom[at + 2]) * f,
+        );
+        if (seen(point)) count++;
+      }
+      return count;
+    };
+    // The best start for a label w cm along and h cm up the paper.
+    const search = (w: number, h: number, strict: boolean) => {
+      const n = Math.max(1, Math.ceil(w / ds));
+      let best: { i: number; turn: number; score: number } | null = null;
+      for (let i = 0; i + n <= stations; i++) {
+        if (facing[i] === 0 || runEnd[i] < i + n) continue;
+        const c = i + n / 2;
+        const y = yFor(i, n, h);
+        if (strict && y + h > height - MARGIN + 0.01) continue; // pushed up by the floor: no room
+        const turn = turned[i + n] - turned[i + 1];
+        const offCentre = 0.05 * Math.abs(c - (runStart[i] + runEnd[i]) / 2) * ds;
+        if (best && turn + offCentre >= best.score) continue; // cannot win; spare the sight check
+        const hidden = SAMPLES - inSight(i, n, y + h / 2);
+        if (strict && hidden > 0) continue;
+        const score = turn + offCentre + hidden * 40;
+        if (!best || score < best.score) best = { i, turn, score };
+      }
+      return best;
+    };
+
+    const { title, year } = label;
+    const sizes = { along: labelSize(title, year, false), up: labelSize(title, year, true) };
+    let vertical: boolean;
+    let best: ReturnType<typeof search>;
+    if (label.vertical !== undefined) {
+      vertical = label.vertical;
+      const size = vertical ? sizes.up : sizes.along;
+      best = search(size.width, size.height, true) ?? search(size.width, size.height, false);
+    } else {
+      const h = search(sizes.along.width, sizes.along.height, true);
+      const v = h && h.turn <= MAX_TURN ? null : search(sizes.up.width, sizes.up.height, true);
+      vertical = !!v && (!h || v.turn < h.turn);
+      best = vertical ? v : (h ?? search(sizes.along.width, sizes.along.height, false));
+    }
+    const size = vertical ? sizes.up : sizes.along;
+    const start = best?.i ?? 0;
+    this.placed = {
+      at: label.at ?? start * ds,
+      y: label.y ?? yFor(start, Math.ceil(size.width / ds), size.height),
+      side: label.side ?? (best && facing[best.i] < 0 ? 'back' : 'front'),
+      vertical,
+    };
+
+    const text = `${title}\n${year}`;
+    if (!this.print || this.print.vertical !== vertical || this.printed !== text) {
+      this.print?.texture.dispose();
+      this.print = printLabel(title, year, vertical);
+      this.printed = text;
+      u.uLabel.value = this.print.texture;
+    }
+    const { at, y: py, side } = this.placed;
+    u.uLabelRect.value.set(at / length, py / height, (at + size.width) / length, (py + size.height) / height);
+    u.uLabelSide.value = side === 'front' ? 1 : -1;
+    u.uLabelAxis.value = vertical ? 1 : 0;
   }
 
   // This sheet's edges in world space, for the sheets that follow it.
@@ -201,5 +378,6 @@ export class Sheet {
   dispose() {
     this.geometry.dispose();
     this.mesh.material.dispose();
+    this.print?.texture.dispose();
   }
 }

@@ -32,17 +32,18 @@ export interface Surface {
   ground: string;
   dots?: string;
   tone?: number;
+  ink: string; // what text printed on this surface is set in, as the original pairs them
 }
 
 export const SURFACES = {
-  pink: { label: '분홍', ground: INK.pink },
-  violet: { label: '보라', ground: INK.violet },
-  beige: { label: '베이지', ground: INK.beige },
-  green: { label: '초록', ground: INK.green },
-  yellow: { label: '노랑', ground: INK.yellow },
-  paper: { label: '종이', ground: PAPER },
-  lavender: { label: '연보라 (망점)', ground: PAPER, dots: INK.violet, tone: 0.25 },
-  darkGreen: { label: '짙은 초록 (망점)', ground: INK.green, dots: INK.violet, tone: 0.8 },
+  pink: { label: '분홍', ground: INK.pink, ink: INK.yellow },
+  violet: { label: '보라', ground: INK.violet, ink: PAPER },
+  beige: { label: '베이지', ground: INK.beige, ink: INK.green },
+  green: { label: '초록', ground: INK.green, ink: INK.yellow },
+  yellow: { label: '노랑', ground: INK.yellow, ink: INK.green },
+  paper: { label: '종이', ground: PAPER, ink: INK.pink },
+  lavender: { label: '연보라 (망점)', ground: PAPER, dots: INK.violet, tone: 0.25, ink: INK.violet },
+  darkGreen: { label: '짙은 초록 (망점)', ground: INK.green, dots: INK.violet, tone: 0.8, ink: INK.yellow },
 } satisfies Record<string, Surface>;
 
 export type SurfaceName = keyof typeof SURFACES;

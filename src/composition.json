@@ -20,7 +20,8 @@
       },
       "faces": ["green", "violet", "darkGreen", "violet", "green", "violet"],
       "follow": { "sheet": "cup-pink", "side": "front", "from": 0, "gap": 3.2, "stiffness": 0, "restTurn": 2, "tension": 0 },
-      "pull": { "from": 4.7, "to": 0, "topLag": 0.3 }
+      "pull": { "from": 4.7, "to": 0, "topLag": 0.3 },
+      "label": { "title": "Poster 001", "year": 2020 }
     },
     {
       "id": "cup-pink",
@@ -35,7 +36,8 @@
         ]
       },
       "faces": ["pink", "yellow", "green", "yellow", "pink", "yellow"],
-      "pull": { "from": 41, "to": 70.5, "topLag": 0.3 }
+      "pull": { "from": 41, "to": 70.5, "topLag": 0.3 },
+      "label": { "title": "Poster 002", "year": 2022 }
     },
     {
       "id": "e-spiral",
@@ -52,7 +54,8 @@
       },
       "faces": ["yellow", "green", "yellow", "green", "yellow", "green"],
       "grounded": true,
-      "pull": { "from": 22, "to": 63, "topLag": 0.3 }
+      "pull": { "from": 22, "to": 63, "topLag": 0.3 },
+      "label": { "title": "Poster 003", "year": 2020 }
     },
     {
       "id": "e-middle",
@@ -68,21 +71,23 @@
         ]
       },
       "faces": ["beige", "yellow", "beige", "beige", "beige", "beige"],
-      "follow": { "sheet": "e-spiral", "side": "front", "from": 2, "gap": 4.5, "stiffness": 0.3, "restTurn": 5, "tension": 0.4 }
+      "follow": { "sheet": "e-spiral", "side": "front", "from": 2, "gap": 4.5, "stiffness": 0.3, "restTurn": 5, "tension": 0.4 },
+      "label": { "title": "Poster 004", "year": 2024 }
     },
     {
       "id": "white-dark-roll",
-      "position": [15.4, -40, -76.3],
+      "position": [16.9, -40, -77.8],
       "rotation": [0, 27, 0],
       "grounded": true,
       "curl": 0.51,
       "shape": {
         "height": 34.5,
         "bends": [
-          { "length": 45.5, "turn": -160, "bottomTurn": -473 }
+          { "length": 45.5, "turn": -160, "bottomTurn": -336 }
         ]
       },
-      "faces": ["green", "darkGreen", "green", "darkGreen", "green", "darkGreen"]
+      "faces": ["green", "darkGreen", "green", "darkGreen", "green", "darkGreen"],
+      "label": { "title": "Poster 005", "year": 2025 }
     },
     {
       "id": "yellow-sheet",
@@ -99,7 +104,8 @@
       },
       "faces": ["green", "yellow", "pink", "green", "pink", "green"],
       "grounded": true,
-      "pull": { "from": 44.5, "to": 56.5, "topLag": 0.3 }
+      "pull": { "from": 44.5, "to": 56.5, "topLag": 0.3 },
+      "label": { "title": "Poster 006", "year": 2023 }
     },
     {
       "id": "violet-beige-panel",
@@ -114,7 +120,8 @@
           { "length": 12.6, "turn": 180 }
         ]
       },
-      "faces": ["violet", "beige", "violet", "beige", "violet", "beige"]
+      "faces": ["violet", "beige", "violet", "beige", "violet", "beige"],
+      "label": { "title": "Poster 007", "year": 2024 }
     },
     {
       "id": "n-dark",
@@ -131,7 +138,8 @@
         ]
       },
       "faces": ["darkGreen", "green", "yellow", "green", "yellow", "green"],
-      "grounded": true
+      "grounded": true,
+      "label": { "title": "Poster 008", "year": 2024 }
     },
     {
       "id": "n-wrap",
@@ -151,7 +159,8 @@
       },
       "faces": ["violet", "beige", "lavender", "beige", "lavender", "beige"],
       "grounded": true,
-      "droop": { "turn": -35, "reach": 14 }
+      "droop": { "turn": -35, "reach": 14 },
+      "label": { "title": "Poster 009", "year": 2022 }
     },
     {
       "id": "eintritt",
@@ -167,7 +176,8 @@
           { "length": 22.5, "turn": 340 }
         ]
       },
-      "faces": ["lavender", "paper", "pink", "paper", "pink", "paper"]
+      "faces": ["lavender", "paper", "pink", "paper", "pink", "paper"],
+      "label": { "title": "Poster 010", "year": 2022 }
     },
     {
       "id": "violet-pink-yellow",
@@ -186,7 +196,8 @@
           { "length": 13.3, "turn": -101 }
         ]
       },
-      "faces": ["violet", "pink", "yellow", "pink", "yellow", "pink"]
+      "faces": ["violet", "pink", "yellow", "pink", "yellow", "pink"],
+      "label": { "title": "Poster 011", "year": 2020 }
     },
     {
       "id": "dark-beige",
@@ -200,7 +211,8 @@
         ]
       },
       "faces": ["darkGreen", "green", "darkGreen", "beige", "darkGreen", "beige"],
-      "follow": { "sheet": "violet-pink-yellow", "side": "back", "from": 0, "gap": 5, "stiffness": 0, "restTurn": 0, "tension": 0.5 }
+      "follow": { "sheet": "violet-pink-yellow", "side": "back", "from": 0, "gap": 5, "stiffness": 0, "restTurn": 0, "tension": 0.5 },
+      "label": { "title": "Poster 012", "year": 2020 }
     },
     {
       "id": "crescent-lavender",
@@ -220,7 +232,8 @@
           { "length": 11.5, "turn": -3, "bottomTurn": -3 }
         ]
       },
-      "faces": ["green", "lavender", "darkGreen", "lavender", "darkGreen", "lavender"]
+      "faces": ["green", "lavender", "darkGreen", "lavender", "darkGreen", "lavender"],
+      "label": { "title": "Poster 013", "year": 2020 }
     },
     {
       "id": "z",
@@ -241,7 +254,8 @@
           { "length": 26.5, "turn": -90 }
         ]
       },
-      "faces": ["green", "paper", "lavender", "darkGreen", "violet", "green"]
+      "faces": ["green", "paper", "lavender", "darkGreen", "violet", "green"],
+      "label": { "title": "Poster 014", "year": 2021 }
     },
     {
       "id": "purple-beige",
@@ -259,11 +273,12 @@
         ]
       },
       "faces": ["violet", "green", "paper", "beige", "paper", "beige"],
-      "grounded": true
+      "grounded": true,
+      "label": { "title": "Poster 015", "year": 2020 }
     },
     {
       "id": "plakatsammlung",
-      "position": [-36.8, -40, -2.4],
+      "position": [-34.4, -40, -1.9],
       "rotation": [0, 19, 0],
       "curl": 0.88,
       "shape": {
@@ -282,7 +297,8 @@
       },
       "faces": ["pink", "darkGreen", "beige", "yellow", "beige", "yellow"],
       "grounded": true,
-      "pull": { "from": 39.9, "to": 75.9, "topLag": 0.3 }
+      "pull": { "from": 39.9, "to": 75.9, "topLag": 0.3 },
+      "label": { "title": "Poster 016", "year": 2024 }
     },
     {
       "id": "green-lavender-dark",
@@ -306,11 +322,12 @@
         ]
       },
       "faces": ["green", "lavender", "darkGreen", "paper", "darkGreen", "paper"],
-      "pull": { "from": 57.68, "to": 88.25, "topLag": 0.3 }
+      "pull": { "from": 57.68, "to": 88.25, "topLag": 0.3 },
+      "label": { "title": "Poster 017", "year": 2023 }
     },
     {
       "id": "white-roll",
-      "position": [-19.9, -36.4, 36.5],
+      "position": [-20.6, -36.8, 36.5],
       "rotation": [0, 37, 0],
       "curl": 1,
       "shape": {
@@ -327,7 +344,8 @@
         ]
       },
       "faces": ["paper", "beige", "darkGreen", "green", "darkGreen", "green"],
-      "pull": { "from": 33.23, "to": 60.98, "topLag": 0.3 }
+      "pull": { "from": 33.23, "to": 60.98, "topLag": 0.3 },
+      "label": { "title": "Poster 018", "year": 2020 }
     }
   ]
 }

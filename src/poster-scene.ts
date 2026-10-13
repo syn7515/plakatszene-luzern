@@ -40,6 +40,12 @@ const BREATH_SECOND = 1.618; // the second, fainter wave is this much slower
 // every other one, so the one under the hand stands out; pointing away
 // brings it all back. Colour drains and returns on this time constant.
 const FOCUS = 0.12; // s
+// The hovered sheet's label prints itself on this time constant, a beat behind the focus.
+const REVEAL = 0.25; // s
+// Labels go where the camera actually sees the paper: the scene is drawn
+// once, small, with every sheet in an id of its own and its depth.
+const SIGHT = 480; // px, the height of that drawing
+const SIGHT_DEPTH = 1.5; // cm; a point this close to what shows of its sheet counts as seen
 
 // A steady number in 0..1 from a sheet's id, so each sheet keeps its rhythm.
 function noise(id: string) {
@@ -89,6 +95,9 @@ export class PosterScene {
 
   private readonly stage: Stage;
   private readonly towardsCamera = new THREE.Vector3();
+  private sightTarget: THREE.WebGLRenderTarget | null = null;
+  private sightPixels = new Uint8Array(0);
+  private readonly idMaterials: THREE.ShaderMaterial[] = [];
 
   constructor(stage: Stage, composition: Composition) {
     this.stage = stage;
@@ -139,6 +148,7 @@ export class PosterScene {
     this.stage.camera.getWorldDirection(this.towardsCamera).negate();
     this.planBreathing();
     const order = this.inBuildOrder();
+    this.placeLabels(order);
     const depth = new Map(order.map((s) => [s, s.spec.position[2]]));
     const sorted = [...order].sort((a, b) => depth.get(a)! - depth.get(b)!);
     const starts = new Map<Sheet, number>();
@@ -369,9 +379,11 @@ export class PosterScene {
   private focus(dt: number) {
     const focused = this.settled ? this.hovered : null;
     const k = 1 - Math.exp(-dt / FOCUS);
+    const kr = 1 - Math.exp(-dt / REVEAL);
     for (const sheet of this.sheets) {
       const want = focused === null || sheet === focused ? 1 : 0;
       sheet.saturation += (want - sheet.saturation) * k;
+      sheet.reveal += ((sheet === focused ? 1 : 0) - sheet.reveal) * kr;
     }
   }
 
@@ -386,12 +398,79 @@ export class PosterScene {
       sheet.update(dt, this.towardsCamera, leader?.guide());
       if (sheet === this.held) this.holdBack(sheet, leader?.guide());
     }
+    // Changed sheets get their labels placed afresh, once they are whole.
+    if (!this.intro) this.placeLabels(this.sheets.filter((s) => s.labelStale && s.extent >= 1));
 
     const pxPerCm = this.stage.resolution.x / POSTER_SIZE.width;
     const pitch = this.composition.print.dotPitch * pxPerCm;
     printUniforms.uDotPitch.value = Math.max(pitch, MIN_DOT_PX * this.stage.renderer.getPixelRatio());
 
     this.onUpdate?.();
+  }
+
+  // Put the labels of these sheets where the camera sees them.
+  private placeLabels(sheets: Sheet[]) {
+    if (sheets.length === 0) return;
+    const seen = this.sight();
+    for (const sheet of sheets) sheet.placeLabel(this.towardsCamera, (point) => seen(sheet, point));
+  }
+
+  // Where each sheet actually shows: the scene drawn once, small, each sheet
+  // in an id of its own with its depth, so that a world point of a sheet can
+  // be asked whether anything, that sheet itself included, hides it.
+  private sight() {
+    const { renderer, scene, camera } = this.stage;
+    const w = Math.round((SIGHT * (camera.right - camera.left)) / (camera.top - camera.bottom));
+    const h = SIGHT;
+    if (!this.sightTarget || this.sightTarget.width !== w || this.sightTarget.height !== h) {
+      this.sightTarget?.dispose();
+      this.sightTarget = new THREE.WebGLRenderTarget(w, h);
+      this.sightPixels = new Uint8Array(w * h * 4);
+    }
+    const target = this.sightTarget;
+    const pixels = this.sightPixels;
+
+    // Only the sheets, each in its id.
+    const meshes = new Set<THREE.Object3D>(this.sheets.map((s) => s.mesh));
+    const hidden = scene.children.filter((o) => !meshes.has(o) && o.visible);
+    for (const o of hidden) o.visible = false;
+    const materials = this.sheets.map((s) => s.mesh.material);
+    this.sheets.forEach((s, i) => ((s.mesh as THREE.Mesh).material = this.idMaterial(i + 1)));
+    const clear = renderer.getClearColor(new THREE.Color());
+    const alpha = renderer.getClearAlpha();
+    renderer.setRenderTarget(target);
+    renderer.setClearColor(0x000000, 1);
+    renderer.clear();
+    renderer.render(scene, camera);
+    renderer.readRenderTargetPixels(target, 0, 0, w, h, pixels);
+    renderer.setRenderTarget(null);
+    renderer.setClearColor(clear, alpha);
+    this.sheets.forEach((s, i) => ((s.mesh as THREE.Mesh).material = materials[i]));
+    for (const o of hidden) o.visible = true;
+
+    const tolerance = SIGHT_DEPTH / (camera.far - camera.near);
+    const ndc = new THREE.Vector3();
+    return (sheet: Sheet, point: THREE.Vector3) => {
+      ndc.copy(point).project(camera);
+      const x = Math.floor(((ndc.x + 1) / 2) * w);
+      const y = Math.floor(((ndc.y + 1) / 2) * h);
+      if (x < 0 || y < 0 || x >= w || y >= h) return false;
+      const at = (y * w + x) * 4;
+      if (pixels[at] !== this.sheets.indexOf(sheet) + 1) return false;
+      const depth = (pixels[at + 1] + pixels[at + 2] / 255) / 255;
+      return Math.abs(depth - (ndc.z + 1) / 2) <= tolerance;
+    };
+  }
+
+  // Draws a sheet as its id (red) and depth (green, blue), for sight().
+  private idMaterial(id: number) {
+    return (this.idMaterials[id] ??= new THREE.ShaderMaterial({
+      uniforms: { uId: { value: id } },
+      vertexShader: 'void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader:
+        'uniform float uId; void main() { float z = gl_FragCoord.z * 255.0; gl_FragColor = vec4(uId / 255.0, floor(z) / 255.0, fract(z), 1.0); }',
+      side: THREE.DoubleSide,
+    }));
   }
 
   // Paper stops at paper. If the pulled sheet now runs through another (or
