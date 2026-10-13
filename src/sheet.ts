@@ -49,9 +49,8 @@ export interface LabelPlace {
   vertical: boolean;
 }
 
-const MARGIN = 3; // cm kept clear between a label and the paper's edges or the floor
+const TOP = 1.5; // cm between the top edge and the label
 const MAX_TURN = 45; // degrees a label may wrap through along the paper before it goes vertical instead
-const SAMPLES = 5; // points along a label asked whether the camera sees them
 
 const towardsCameraLocal = new THREE.Vector3();
 const inverse = new THREE.Quaternion();
@@ -257,16 +256,6 @@ export class Sheet {
       turned[i + 1] = turned[i] + (i > 0 ? THREE.MathUtils.radToDeg(prev.angleTo(along)) : 0);
       prev.copy(along);
     }
-    // The run of segments showing one side that each segment belongs to.
-    const runStart = new Int32Array(stations);
-    const runEnd = new Int32Array(stations);
-    for (let i = 0; i < stations; ) {
-      let j = i;
-      while (j < stations && facing[j] === facing[i]) j++;
-      runStart.fill(i, i, j);
-      runEnd.fill(j, i, j);
-      i = j;
-    }
     // Where the floor cuts the paper at a station, in cm up the paper.
     const floorAt = (i: number) => {
       const [yb, yt] = [bottom[3 * i + 1], top[3 * i + 1]];
@@ -275,38 +264,57 @@ export class Sheet {
     // Where a label h cm tall sits, starting at station i over n stations:
     // up against the top edge, but never below the floor.
     const yFor = (i: number, n: number, h: number) =>
-      Math.max(height - MARGIN - h, floorAt(Math.min(stations, Math.round(i + n / 2))));
-    // How many of SAMPLES points along the label's middle the camera sees.
+      Math.max(height - TOP - h, floorAt(Math.min(stations, Math.round(i + n / 2))));
+    // Whether the camera sees each station, at the middle of a label h cm tall there.
     const point = new THREE.Vector3();
-    const inSight = (i: number, n: number, y: number) => {
-      const f = y / height;
-      let count = 0;
-      for (let k = 0; k < SAMPLES; k++) {
-        const at = 3 * Math.min(stations, Math.round(i + (n * k) / (SAMPLES - 1)));
+    const sightAt = (h: number) => {
+      const seenAt = new Uint8Array(stations + 1);
+      for (let i = 0; i <= stations; i++) {
+        const f = (yFor(i, 0, h) + h / 2) / height;
+        const at = 3 * i;
         point.set(
           bottom[at] + (top[at] - bottom[at]) * f,
           bottom[at + 1] + (top[at + 1] - bottom[at + 1]) * f,
           bottom[at + 2] + (top[at + 2] - bottom[at + 2]) * f,
         );
-        if (seen(point)) count++;
+        seenAt[i] = seen(point) ? 1 : 0;
       }
-      return count;
+      return seenAt;
     };
-    // The best start for a label w cm along and h cm up the paper.
+    // The runs of segments that show one side (and, strictly, that the
+    // camera sees): where each segment's run starts and ends.
+    const runs = (seenAt: Uint8Array | null) => {
+      const start = new Int32Array(stations);
+      const end = new Int32Array(stations);
+      const same = (i: number, j: number) => facing[j] === facing[i] && (!seenAt || seenAt[j] === 1);
+      for (let i = 0; i < stations; ) {
+        let j = i;
+        while (j < stations && same(i, j)) j++;
+        start.fill(i, i, Math.max(j, i + 1));
+        end.fill(j, i, Math.max(j, i + 1));
+        i = Math.max(j, i + 1);
+      }
+      return { start, end };
+    };
+    // The best start for a label w cm along and h cm up the paper: within
+    // one run, turning least and nearest the run's middle. Strictly, the
+    // run must be in sight and the label must fit under the top edge;
+    // otherwise hidden stretches only count against it.
     const search = (w: number, h: number, strict: boolean) => {
       const n = Math.max(1, Math.ceil(w / ds));
+      const seenAt = sightAt(h);
+      const { start, end } = runs(strict ? seenAt : null);
       let best: { i: number; turn: number; score: number } | null = null;
       for (let i = 0; i + n <= stations; i++) {
-        if (facing[i] === 0 || runEnd[i] < i + n) continue;
+        if (facing[i] === 0 || (strict && seenAt[i] === 0) || end[i] < i + n) continue;
         const c = i + n / 2;
         const y = yFor(i, n, h);
-        if (strict && y + h > height - MARGIN + 0.01) continue; // pushed up by the floor: no room
+        if (strict && y + h > height - TOP + 0.01) continue; // pushed up by the floor: no room
         const turn = turned[i + n] - turned[i + 1];
-        const offCentre = 0.05 * Math.abs(c - (runStart[i] + runEnd[i]) / 2) * ds;
-        if (best && turn + offCentre >= best.score) continue; // cannot win; spare the sight check
-        const hidden = SAMPLES - inSight(i, n, y + h / 2);
-        if (strict && hidden > 0) continue;
-        const score = turn + offCentre + hidden * 40;
+        const offCentre = 0.05 * Math.abs(c - (start[i] + end[i]) / 2) * ds;
+        let hidden = 0;
+        if (!strict) for (let k = i; k <= i + n; k++) hidden += 1 - seenAt[k];
+        const score = turn + offCentre + (hidden / (n + 1)) * 200;
         if (!best || score < best.score) best = { i, turn, score };
       }
       return best;

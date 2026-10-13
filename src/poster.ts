@@ -42,7 +42,7 @@ export const SURFACES = {
   green: { label: '초록', ground: INK.green, ink: INK.yellow },
   yellow: { label: '노랑', ground: INK.yellow, ink: INK.green },
   paper: { label: '종이', ground: PAPER, ink: INK.pink },
-  lavender: { label: '연보라 (망점)', ground: PAPER, dots: INK.violet, tone: 0.25, ink: INK.violet },
+  lavender: { label: '연보라 (망점)', ground: PAPER, dots: INK.violet, tone: 0.25, ink: '#000000' },
   darkGreen: { label: '짙은 초록 (망점)', ground: INK.green, dots: INK.violet, tone: 0.8, ink: INK.yellow },
 } satisfies Record<string, Surface>;
 

@@ -6,9 +6,9 @@ import * as THREE from 'three';
 // cm), and the shader prints it on the paper in the face's ink.
 // Horizontal, the lines run along the paper; vertical, they read up the
 // paper (the title then stands as the left column).
-export const CAP = 1.8; // cm, cap height of both lines
-const GAP = 0.9; // cm between the title and the year
-const PAD = 0.8; // cm of clear paper around the text
+export const CAP = 1.4; // cm, cap height of both lines
+const GAP = 0.7; // cm between the title and the year
+const PAD = 0.6; // cm of clear paper around the text
 const DENSITY = 24; // texture px per cm
 const CAP_RATIO = 0.72; // cap height over font size, for Helvetica
 const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
@@ -21,7 +21,7 @@ export interface LabelPrint {
 }
 
 const px = (cm: number) => Math.round(cm * DENSITY);
-const WEIGHT = 500; // medium: lighter than the original's bold, at this size
+const WEIGHT = 400; // regular: lighter than the original's bold, at this size
 const font = `${WEIGHT} ${px(CAP / CAP_RATIO)}px ${FONT}`;
 
 let scratch: CanvasRenderingContext2D | null = null;
