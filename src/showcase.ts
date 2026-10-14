@@ -114,7 +114,6 @@ export function mountShowcase(
     scene.callOut(sheet).then(async () => {
       if (open?.sheet !== sheet) return;
       frame.classList.add('showing');
-      warm();
       scrim.animate([{ opacity: 0 }, { opacity: SCRIM }], { duration: ms(SCRIM_IN), easing: 'ease-out', fill: 'forwards' });
       turn(sheet);
       await Promise.all([ready, new Promise((r) => setTimeout(r, ms(WIPE_AFTER)))]);
@@ -132,6 +131,9 @@ export function mountShowcase(
           if (open?.sheet !== sheet) return;
           shown.style.clipPath = 'inset(0 0 0 0)';
           wipe.cancel();
+          // Only now the posters either side, so drawing them does not
+          // compete with drawing this one while it comes on.
+          warm();
         },
         () => {},
       );
