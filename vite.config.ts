@@ -40,4 +40,9 @@ function compositionWriter(): Plugin {
   };
 }
 
-export default defineConfig({ plugins: [compositionWriter()] });
+export default defineConfig({
+  plugins: [compositionWriter()],
+  // The port the launcher hands out (PORT), so a worktree's server can run
+  // beside the main checkout's; Vite's own default otherwise.
+  server: { port: Number(process.env.PORT) || undefined },
+});

@@ -7,8 +7,46 @@
   </head>
   <body>
     <main>
-      <div class="poster-frame">
-        <canvas id="poster" aria-label="Plakatszene Luzern – Plakat"></canvas>
+      <div class="work">
+        <div class="poster-frame">
+          <canvas id="poster" aria-label="Plakatszene Luzern – Plakat"></canvas>
+        </div>
+        <!-- The wall beside the poster: a line of wall text, and the label
+             with the exhibition photo tucked behind it (caption.ts). -->
+        <aside class="caption" lang="en" aria-label="About this poster">
+          <p class="about">
+            A poster for a poster exhibition, rebuilt as an interactive showcase. Point at a sheet to single it
+            out; drag a roll to unroll it.
+          </p>
+          <div class="label">
+            <button class="print" type="button" aria-expanded="false" aria-label="Photo of the original poster">
+              <span class="paper">
+                <img
+                  src="/photo-seoul-2026-small.jpg"
+                  data-full="/photo-seoul-2026.webp"
+                  width="360"
+                  height="480"
+                  alt="The printed poster, held to a plan chest by four magnets, at the Seoul exhibition"
+                />
+                <span class="note">
+                  <span>
+                    <span class="place">Doosung Paper Gallery, Seoul</span>
+                    <span class="when">October 2026</span>
+                  </span>
+                </span>
+              </span>
+            </button>
+            <p class="kind">Original poster</p>
+            <div class="card">
+              <h1>Plakatszene Luzern</h1>
+              <p>Isabelle Mauchle, Felix Pfäffli, Erich Brechbühl</p>
+              <p class="dim">2025, for the Plakatsammlung der Schule für Gestaltung Basel</p>
+              <a class="link" href="https://100-beste-plakate.de/plakate/plakatszene-luzern/" target="_blank" rel="noopener"
+                >100 Beste Plakate ↗</a
+              >
+            </div>
+          </div>
+        </aside>
       </div>
     </main>
     <script type="module" src="/src/main.ts"></script>

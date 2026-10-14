@@ -2,6 +2,10 @@
   --backdrop: #e6e6e6;
   --gutter: 24px;
   --panel: 0px; /* room kept free for the editor panel */
+  --gap: 28px; /* between the poster and its label */
+  --label: 232px; /* the label's width */
+  --shift: 0px; /* how far the poster gives way to its label; caption.ts sets it */
+  --ease: cubic-bezier(0.55, 0, 0.15, 1); /* the opening's curve */
 }
 
 * {
@@ -15,6 +19,12 @@ body {
   background: var(--backdrop);
 }
 
+/* Nothing here ever needs to scroll sideways, and a stray pixel of
+   horizontal overflow would raise a scrollbar that shifts the whole wall. */
+html {
+  overflow-x: clip;
+}
+
 main {
   display: grid;
   place-items: center;
@@ -23,11 +33,17 @@ main {
   padding-right: calc(var(--gutter) + var(--panel));
 }
 
+/* The poster and its label. --poster-ratio is set from POSTER_SIZE in stage.ts */
+.work {
+  position: relative;
+  width: min(100%, calc((100dvh - 2 * var(--gutter)) * var(--poster-ratio)));
+  translate: calc(-1 * var(--shift)) 0;
+}
+
 .poster-frame {
   position: relative;
-  /* --poster-ratio is set from POSTER_SIZE in stage.ts */
   aspect-ratio: var(--poster-ratio);
-  width: min(100%, calc((100dvh - 2 * var(--gutter)) * var(--poster-ratio)));
+  width: 100%;
 }
 
 #poster {
@@ -51,8 +67,233 @@ body.editing {
   --panel: 260px;
 }
 
+body.editing .work {
+  translate: none;
+}
+
+body.editing .caption {
+  display: none;
+}
+
+/* --- The wall label --------------------------------------------------------
+   The grey page is the wall. Beside the poster, a column as tall as it: a
+   line of wall text at the top saying what this is, and at the bottom a
+   white card with the credits, like a gallery label, headed "Original
+   poster" on the wall above it, with the exhibition photo tucked behind it.
+   It fades in once every sheet has grown in; where it stands is decided in
+   caption.ts. */
+
+.caption {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(100% + var(--gap));
+  width: var(--label);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font: 12px/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #161616;
+  opacity: 0;
+  transition: opacity 0.6s var(--ease);
+}
+
+.caption.shown {
+  opacity: 1;
+}
+
+.caption p,
+.caption h1 {
+  margin: 0;
+  font: inherit;
+}
+
+.caption h1 {
+  font-weight: 500;
+}
+
+/* The wall text and the heading stand on the card's text line. */
+.caption .about,
+.caption .kind {
+  padding-left: 16px; /* the card's side padding */
+}
+
+.caption .label {
+  position: relative;
+}
+
+.caption .card {
+  position: relative;
+  z-index: 2;
+  background: #fff;
+  padding: 14px 16px 16px;
+}
+
+.caption .kind,
+.caption .dim {
+  color: #7a7a7a;
+}
+
+/* "Original poster", on the wall just above the card, left of where the
+   print peeks out. */
+.caption .kind {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 6px;
+}
+
+.caption .link {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 5px 9px 4px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: inherit;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.caption .link:hover {
+  background: #161616;
+  color: #fff;
+}
+
+/* The print, tucked behind the card, tilted by --tuck; caption.ts brings
+   it out and back by animating its transform. .paper is the photo print
+   itself, border included. */
+.print {
+  --tuck: -5deg;
+  --overhang: 31px; /* how far past the label's right edge it reaches: 22px plus what the turn adds */
+  position: absolute;
+  z-index: 1;
+  right: -22px;
+  top: -58px;
+  width: 150px;
+  aspect-ratio: 3 / 4;
+  min-height: 0; /* the box keeps the photo's shape; an open note overflows below it */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transform: rotate(var(--tuck));
+  will-change: transform;
+}
+
+.print:focus-visible {
+  outline: none;
+}
+
+.print:focus-visible .paper {
+  outline: 2px solid #161616;
+  outline-offset: 2px;
+}
+
+.paper {
+  display: block;
+  width: 100%;
+  padding: 3.5%;
+  background: #faf8f3;
+}
+
+.paper img {
+  display: block;
+  width: 100%;
+  height: auto; /* not the markup's height attribute */
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+
+/* Where and when the photo was taken, written in the print's lower margin,
+   a line each (what it is, the wall already says). The margin is closed while the print
+   is tucked and opens below the photo as the print comes out (as long as
+   caption.ts's OUT), the way a print has a wider margin for a caption. The
+   type is set in the print's own pixels, before it is scaled up, small enough
+   for each line to stay one line across the print: about 10px on screen once
+   the print is out at the label's width. */
+.note {
+  display: grid;
+  grid-template-rows: 0fr;
+  padding-top: 0;
+  font-size: 6.5px;
+  line-height: 1.3;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.52s var(--ease),
+    padding-top 0.52s var(--ease),
+    opacity 0.2s var(--ease);
+}
+
+.note > span {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Both lines at the regular weight; only the colour steps the date back. */
+.note .place,
+.note .when {
+  display: block;
+}
+
+.note .when {
+  color: #7a7a7a;
+}
+
+.print.out .note {
+  grid-template-rows: 1fr;
+  padding-top: 0.6em;
+  opacity: 1;
+  transition:
+    grid-template-rows 0.52s var(--ease),
+    padding-top 0.52s var(--ease),
+    opacity 0.3s var(--ease) 0.25s;
+}
+
+/* No room beside the poster: the column goes under it, wall text first,
+   and the print peeks out to the right instead of the top. */
+.work.below {
+  translate: none;
+}
+
+.work.below .caption {
+  position: relative;
+  top: auto;
+  bottom: auto;
+  left: auto;
+  width: 100%;
+  margin-top: 32px;
+  gap: 40px; /* the tucked print reaches about 31px above the label */
+}
+
+.work.below .about {
+  max-width: 36em;
+}
+
+.work.below .label {
+  width: min(var(--label), 72%);
+}
+
+.work.below .print {
+  --tuck: 5deg;
+  right: -96px;
+  top: auto;
+  bottom: 0;
+}
+
 @media (max-width: 480px) {
   :root {
     --gutter: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caption,
+  .note,
+  .print.out .note {
+    transition: none;
   }
 }
