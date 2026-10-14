@@ -31,6 +31,12 @@ html {
   overflow-x: clip;
 }
 
+/* When the label goes under the poster and the page scrolls, a thin
+   scrollbar (Tailwind's scrollbar-thin). */
+html {
+  scrollbar-width: thin;
+}
+
 main {
   display: grid;
   place-items: center;
