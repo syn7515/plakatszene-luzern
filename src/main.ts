@@ -1,9 +1,14 @@
 import { mountCaption, type Caption } from './caption.ts';
 import { initialComposition } from './composition.ts';
+import { labelFontLoaded } from './label.ts';
 import { PosterScene } from './poster-scene.ts';
 import { enablePull } from './pull.ts';
 import { createStage } from './stage.ts';
 import './style.css';
+
+// The labels on the paper are set in the wall's face; index.html preloads
+// it, so this rarely waits.
+await labelFontLoaded();
 
 const canvas = document.querySelector<HTMLCanvasElement>('#poster')!;
 const stage = createStage(canvas);
@@ -41,5 +46,6 @@ stage.renderer.setAnimationLoop((time) => {
   poster.update(dt);
   // The label joins the wall once every sheet has grown in.
   if (caption && poster.ready) caption.show();
-  stage.renderer.render(stage.scene, stage.camera);
+  poster.render();
 });
+stage.onResize = () => poster.render();

@@ -1,4 +1,22 @@
+/* Every line of text, on the wall and on the paper, is set in ABC Areal
+   (label.ts names it too). The files are licensed and kept out of the
+   repository; without them it falls back to Helvetica. */
+@font-face {
+  font-family: "ABC Areal";
+  src: url("/fonts/ABCAreal-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ABC Areal";
+  src: url("/fonts/ABCAreal-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+
 :root {
+  --face: "ABC Areal", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --backdrop: #e6e6e6;
   --gutter: 24px;
   --panel: 0px; /* room kept free for the editor panel */
@@ -29,6 +47,12 @@ body {
    horizontal overflow would raise a scrollbar that shifts the whole wall. */
 html {
   overflow-x: clip;
+}
+
+/* When the label goes under the poster and the page scrolls, a thin
+   scrollbar (Tailwind's scrollbar-thin). */
+html {
+  scrollbar-width: thin;
 }
 
 main {
@@ -98,7 +122,7 @@ body.editing .caption {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font: 12px/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font: 12px/1.4 var(--face);
   color: #161616;
   opacity: 0;
   transition: opacity 0.6s var(--ease);

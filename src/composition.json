@@ -64,7 +64,7 @@
       "grounded": true,
       "curl": 1,
       "shape": {
-        "height": 55.5,
+        "height": 57,
         "bends": [
           { "length": 50, "turn": 0, "follow": true },
           { "length": 10, "turn": 50 }
@@ -72,7 +72,7 @@
       },
       "faces": ["beige", "yellow", "beige", "beige", "beige", "beige"],
       "follow": { "sheet": "e-spiral", "side": "front", "from": 2, "gap": 4.5, "stiffness": 0.3, "restTurn": 5, "tension": 0.4 },
-      "label": { "title": "Poster 004", "name": "Jonas Widmer" }
+      "label": { "title": "Poster 004", "name": "Jonas Widmer", "at": 3.9, "y": 49.5, "side": "back" }
     },
     {
       "id": "white-dark-roll",
@@ -81,17 +81,17 @@
       "grounded": true,
       "curl": 0.51,
       "shape": {
-        "height": 34.5,
+        "height": 35,
         "bends": [
           { "length": 45.5, "turn": -160, "bottomTurn": -336 }
         ]
       },
       "faces": ["green", "darkGreen", "green", "darkGreen", "green", "darkGreen"],
-      "label": { "title": "Poster 005", "name": "Elin Ammann", "vertical": false, "at": 11, "y": 28.3, "side": "front" }
+      "label": { "title": "Poster 005", "name": "Elin Ammann", "vertical": false, "at": 12, "y": 29, "side": "front" }
     },
     {
       "id": "yellow-sheet",
-      "position": [0.4, -40, 36],
+      "position": [0.3, -40, 35.9],
       "rotation": [0, 0, 0],
       "curl": 1,
       "shape": {
@@ -125,11 +125,11 @@
     },
     {
       "id": "n-dark",
-      "position": [35.5, -40, 16.8],
+      "position": [35.5, -40, 16.9],
       "rotation": [0, -143, 0],
       "curl": 0.44,
       "shape": {
-        "height": 41,
+        "height": 43,
         "bends": [
           { "length": 28, "turn": 0 },
           { "length": 8, "turn": 79.4 },
@@ -139,11 +139,11 @@
       },
       "faces": ["darkGreen", "green", "yellow", "green", "yellow", "green"],
       "grounded": true,
-      "label": { "title": "Poster 008", "name": "Sven Marti" }
+      "label": { "title": "Poster 008", "name": "Sven Marti", "at": 2.5, "y": 36.8, "side": "back" }
     },
     {
       "id": "n-wrap",
-      "position": [35.2, -40, 44.9],
+      "position": [35.2, -40, 45],
       "rotation": [0, 154.5, 0],
       "curl": 1,
       "shape": {
@@ -212,7 +212,7 @@
       },
       "faces": ["darkGreen", "green", "darkGreen", "beige", "darkGreen", "beige"],
       "follow": { "sheet": "violet-pink-yellow", "side": "back", "from": 0, "gap": 5, "stiffness": 0, "restTurn": 0, "tension": 0.5 },
-      "label": { "title": "Poster 012", "name": "Remo Zbinden", "at": 47.5, "y": 28.3, "side": "back" }
+      "label": { "title": "Poster 012", "name": "Remo Zbinden", "at": 48.5, "y": 28.3, "side": "back" }
     },
     {
       "id": "crescent-lavender",
@@ -233,7 +233,7 @@
         ]
       },
       "faces": ["green", "lavender", "darkGreen", "lavender", "darkGreen", "lavender"],
-      "label": { "title": "Poster 013", "name": "Flurina Bieri" }
+      "label": { "title": "Poster 013", "name": "Flurina Bieri", "at": 49, "y": 25, "side": "front" }
     },
     {
       "id": "z",
@@ -278,7 +278,7 @@
     },
     {
       "id": "plakatsammlung",
-      "position": [-34.4, -40, -2],
+      "position": [-34.4, -40, -2.1],
       "rotation": [0, 19, 0],
       "curl": 0.88,
       "shape": {

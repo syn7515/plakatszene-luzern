@@ -15,8 +15,8 @@ export const HALO = 0.45; // cm around the text kept free of dots (more than the
 const PAD = 0.6; // cm of clear paper around the text, beyond the halo's reach
 const DENSITY = 32; // texture px per cm
 export const SPREAD = 1.2; // cm of distance a texel can tell, either side of an edge (paper.frag.glsl agrees)
-const CAP_RATIO = 0.72; // cap height over font size, for Helvetica
-const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+const CAP_RATIO = 0.716; // cap height over font size, for ABC Areal (Helvetica's is within a hair)
+const FONT = '"ABC Areal", "Helvetica Neue", Helvetica, Arial, sans-serif'; // style.css's --face
 
 export interface LabelPrint {
   texture: THREE.DataTexture;
@@ -31,6 +31,12 @@ const px = (cm: number) => Math.round(cm * DENSITY);
 export const WEIGHT_LIGHT_ON_DARK = 400;
 export const WEIGHT_DARK_ON_LIGHT = 500;
 const font = (weight: number) => `${weight} ${px(CAP / CAP_RATIO)}px ${FONT}`;
+
+// A canvas does not wait for a web font: until it has loaded, labels would
+// be measured and printed in the fallback, and keep it. Settles either way,
+// so a missing font file leaves the fallback rather than no labels.
+export const labelFontLoaded = () =>
+  Promise.allSettled([WEIGHT_LIGHT_ON_DARK, WEIGHT_DARK_ON_LIGHT].map((weight) => document.fonts.load(font(weight))));
 
 let scratch: CanvasRenderingContext2D | null = null;
 const measure = (text: string, font: string) => {
