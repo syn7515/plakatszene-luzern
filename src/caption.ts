@@ -65,8 +65,11 @@ export function mountCaption(work: HTMLElement): Caption {
 
   // --- The print's two places ----------------------------------------------
 
-  // Tucked, as the stylesheet puts it; the angle is its --tuck.
-  const rest = () => `rotate(${px(getComputedStyle(print), '--tuck')}deg)`;
+  // Tucked, as the stylesheet puts it: turned by its --tuck, made smaller by its --small.
+  const rest = () => {
+    const style = getComputedStyle(print);
+    return `rotate(${px(style, '--tuck')}deg) scale(${px(style, '--small') || 1})`;
+  };
   // How far the open note reaches below the print's box, before scaling.
   const margin = () => note.firstElementChild!.scrollHeight + 0.6 * parseFloat(getComputedStyle(note).fontSize);
   // Out: above the card, as wide as the label; under the poster, as wide as
