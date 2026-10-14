@@ -6,8 +6,9 @@
 // other sheets still faintly there behind it, and the real poster is wiped
 // on over the scrim from the side the sheet left by, a little smaller than
 // the frame. The wall label turns to that poster, its heading becoming the
-// roll to step through (‹ 9 / 18 ›, or the arrow keys); stepping only
-// changes what the label says, the label itself stays put. "Back to the
+// roll to step through (‹ 09 / 18 ›, or the arrow keys). Turning to a poster
+// and back, and stepping, only change what the label says: its white card
+// stays where it is. "Back to the
 // original", Escape or a click on the poster or the scrim fades it all away,
 // the sheet already back in its place underneath.
 //
@@ -34,7 +35,6 @@ const WIPE_AFTER = 260; // ms after the scrim starts coming
 const FADE_OUT = 450; // ms, closing
 const STEP_OUT = 160; // ms, stepping to the next poster: this one fades
 const STEP_IN = 240; // ms, and that one comes
-const TURN = 180; // ms, the label fading out before it turns (style.css's .label.turning agrees)
 const EASE = 'cubic-bezier(0.55, 0, 0.15, 1)'; // the opening's curve
 
 export interface Showcase {
@@ -81,6 +81,7 @@ export function mountShowcase(
   previous.dataset.by = '-1';
   next.dataset.by = '1';
   const count = document.createElement('span');
+  count.className = 'count';
   const kind = document.createElement('p');
   kind.className = 'kind called';
   kind.append(previous, count, next);
@@ -155,27 +156,17 @@ export function mountShowcase(
     shown.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms(STEP_IN), fill: 'forwards' });
   }
 
-  // The label fades, turns to this sheet's poster (or back to the original
-  // with null), and comes back.
-  let turning = 0;
+  // The label turns to this sheet's poster, or back to the original (null).
   function turn(sheet: Sheet | null) {
-    const id = ++turning;
-    label.classList.add('turning');
-    setTimeout(
-      () => {
-        if (id !== turning) return;
-        if (sheet) fill(sheet);
-        label.classList.toggle('calling', !!sheet);
-        label.classList.remove('turning');
-      },
-      ms(TURN),
-    );
+    if (sheet) fill(sheet);
+    label.classList.toggle('calling', !!sheet);
   }
 
   function fill(sheet: Sheet) {
     const { title, name } = sheet.spec.label!;
     const entry = entryOf(sheet)!;
-    count.textContent = `${roll.indexOf(sheet) + 1} / ${roll.length}`;
+    // Two figures always (09, 10), so the count keeps one width.
+    count.textContent = `${String(roll.indexOf(sheet) + 1).padStart(2, '0')} / ${roll.length}`;
     const h1 = document.createElement('h1');
     h1.textContent = title;
     if (entry.year) {
