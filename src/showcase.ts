@@ -6,7 +6,8 @@
 // other sheets still faintly there behind it, and the real poster is wiped
 // on over the scrim from the side the sheet left by, a little smaller than
 // the frame. The wall label turns to that poster, its heading becoming the
-// roll to step through (‹ 9 / 18 ›, or the arrow keys); "Back to the
+// roll to step through (‹ 9 / 18 ›, or the arrow keys); stepping only
+// changes what the label says, the label itself stays put. "Back to the
 // original", Escape or a click on the poster or the scrim fades it all away,
 // the sheet already back in its place underneath.
 //
@@ -64,9 +65,26 @@ export function mountShowcase(
   shown.append(img);
   frame.append(scrim, shown);
 
-  // The label's other heading and card, for the poster shown.
+  // The label's other heading and card, for the poster shown. The heading's
+  // buttons and the way back are made once, so stepping keeps them (and
+  // keyboard focus) where they are.
+  const button = (text: string, className: string, aria?: string) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = className;
+    b.textContent = text;
+    if (aria) b.setAttribute('aria-label', aria);
+    return b;
+  };
+  const previous = button('‹', 'step', 'Previous poster');
+  const next = button('›', 'step', 'Next poster');
+  previous.dataset.by = '-1';
+  next.dataset.by = '1';
+  const count = document.createElement('span');
   const kind = document.createElement('p');
   kind.className = 'kind called';
+  kind.append(previous, count, next);
+  const back = button('Back to the original', 'link back');
   const card = document.createElement('div');
   card.className = 'card called';
   label.querySelector('.card')!.after(kind, card);
@@ -129,7 +147,7 @@ export function mountShowcase(
     if (!open) return;
     open.at = (open.at + by + roll.length) % roll.length;
     const sheet = roll[open.at];
-    turn(sheet);
+    fill(sheet);
     await shown.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms(STEP_OUT), fill: 'forwards' }).finished;
     if (roll[open?.at ?? -1] !== sheet) return;
     await load(entryOf(sheet)!);
@@ -157,19 +175,7 @@ export function mountShowcase(
   function fill(sheet: Sheet) {
     const { title, name } = sheet.spec.label!;
     const entry = entryOf(sheet)!;
-    const at = roll.indexOf(sheet);
-    const button = (text: string, className: string, aria?: string) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = className;
-      b.textContent = text;
-      if (aria) b.setAttribute('aria-label', aria);
-      return b;
-    };
-    const [back, on] = [button('‹', 'step', 'Previous poster'), button('›', 'step', 'Next poster')];
-    back.dataset.by = '-1';
-    on.dataset.by = '1';
-    kind.replaceChildren(back, `${at + 1} / ${roll.length}`, on);
+    count.textContent = `${roll.indexOf(sheet) + 1} / ${roll.length}`;
     const h1 = document.createElement('h1');
     h1.textContent = title;
     if (entry.year) {
@@ -186,7 +192,7 @@ export function mountShowcase(
       const a = Object.assign(document.createElement('a'), { className: 'link', href: entry.link, target: '_blank', rel: 'noopener', textContent: 'Full credits ↗' });
       lines.push(a);
     }
-    lines.push(button('Back to the original', 'link back'));
+    lines.push(back);
     card.replaceChildren(...lines);
     img.alt = `${title}, ${name}${entry.placeholder ? ' (placeholder)' : ''}`;
   }
