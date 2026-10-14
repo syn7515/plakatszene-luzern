@@ -9,16 +9,17 @@
 // under the poster.
 //
 // Pointing at the label slides the print out from behind the card: it comes
-// up above the card, as wide as the label, nearly straight, and its lower
-// margin opens to say what the photo is; it slips back once the pointer has
-// left both the card and the print (with SLACK to spare, so a cursor the
-// rising print leaves behind does not send it back and forth). Where there
-// is no pointer to hover with, a tap does the same and a tap anywhere else
-// (or Escape) puts it back. Under the poster the print instead comes up over
-// the poster's foot, centred.
+// out beside the card, as wide as the label, nearly straight, standing on the
+// card's foot, and its lower margin opens to say what the photo is; it slips
+// back once the pointer has left both the card and the print (with SLACK to
+// spare, so a cursor the rising print leaves behind does not send it back and
+// forth). Where there is no pointer to hover with, a tap does the same and a
+// tap anywhere else (or Escape) puts it back. Where the page has no room
+// beside the card, the print comes up above it instead, or, under the poster,
+// over the poster's foot, centred.
 
 const TILT = -2; // degrees, while out
-const CLEAR = 14; // px between the print's foot and the card
+const CLEAR = 14; // px between the print and the card
 const SLACK = 12; // px around the card and the print within which a pointer keeps it out
 const OUT = 520; // ms, out from behind the card (style.css's .note agrees)
 const BACK = 420; // ms, back behind it
@@ -72,13 +73,20 @@ export function mountCaption(work: HTMLElement): Caption {
   };
   // How far the open note reaches below the print's box, before scaling.
   const margin = () => note.firstElementChild!.scrollHeight + 0.6 * parseFloat(getComputedStyle(note).fontSize);
-  // Out: above the card, as wide as the label; under the poster, as wide as
-  // the print's share of the page and centred. Never taller, note included,
-  // than the room between the card and the top of the window.
-  function scale() {
-    const wide = (below() ? 0.72 * work.clientWidth : label.offsetWidth) / print.offsetWidth;
+  // Out: beside the card, standing on its foot, wherever the page has room
+  // for it there as wide as the label. Otherwise above the card, as wide as
+  // the label; under the poster, as wide as the print's share of the page and
+  // centred. Never taller, note included, than the room between its foot and
+  // the top of the window.
+  function beside() {
+    const edge = main.getBoundingClientRect().right - px(getComputedStyle(main), 'padding-right');
+    return edge - label.getBoundingClientRect().right - CLEAR >= label.offsetWidth;
+  }
+  function scale(side: boolean) {
+    const wide = (below() && !side ? 0.72 * work.clientWidth : label.offsetWidth) / print.offsetWidth;
     const gutter = px(getComputedStyle(document.documentElement), '--gutter');
-    const headroom = label.getBoundingClientRect().top - CLEAR - gutter;
+    const card = label.getBoundingClientRect();
+    const headroom = (side ? card.bottom : card.top - CLEAR) - gutter;
     return Math.max(1, Math.min(wide, headroom / (print.offsetHeight + margin())));
   }
   function shown() {
@@ -90,9 +98,13 @@ export function mountCaption(work: HTMLElement): Caption {
     const h0 = print.offsetHeight;
     const cx = a.left + print.offsetLeft + w0 / 2;
     const cy = a.top + print.offsetTop + h0 / 2;
-    const s = scale();
-    const x = below() ? work.getBoundingClientRect().left + work.clientWidth / 2 : a.left + (w0 * s) / 2;
-    const y = a.top - CLEAR - (margin() + h0 / 2) * s;
+    const side = beside();
+    const s = scale(side);
+    let x = a.left + (w0 * s) / 2;
+    if (side) x = a.right + CLEAR + (w0 * s) / 2;
+    else if (below()) x = work.getBoundingClientRect().left + work.clientWidth / 2;
+    const foot = side ? a.bottom : a.top - CLEAR;
+    const y = foot - (margin() + h0 / 2) * s;
     return `translate(${x - cx}px, ${y - cy}px) rotate(${TILT}deg) scale(${s})`;
   }
 
