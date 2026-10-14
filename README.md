@@ -1,4 +1,4 @@
-# Plakatszene Luzern — interactive
+# Roll Call
 
 [Plakatszene Luzern](https://100-beste-plakate.de/plakate/plakatszene-luzern/) 포스터(Isabelle Mauchle, Felix Pfäffli, Erich Brechbühl, 2025)를
 Three.js로 다시 만드는 실험. 말려 있는 종이가 펴지고 다시 말리는 인터랙션이 핵심.
