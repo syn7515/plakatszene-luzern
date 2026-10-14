@@ -72,7 +72,7 @@
       },
       "faces": ["beige", "yellow", "beige", "beige", "beige", "beige"],
       "follow": { "sheet": "e-spiral", "side": "front", "from": 2, "gap": 4.5, "stiffness": 0.3, "restTurn": 5, "tension": 0.4 },
-      "label": { "title": "Poster 004", "name": "Jonas Widmer", "at": 3.9, "y": 49.5, "side": "back" }
+      "label": { "title": "Poster 004", "name": "Jonas Widmer", "at": 3.9, "y": 51, "side": "back" }
     },
     {
       "id": "white-dark-roll",
