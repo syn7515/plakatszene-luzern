@@ -41,5 +41,6 @@ stage.renderer.setAnimationLoop((time) => {
   poster.update(dt);
   // The label joins the wall once every sheet has grown in.
   if (caption && poster.ready) caption.show();
-  stage.renderer.render(stage.scene, stage.camera);
+  poster.render();
 });
+stage.onResize = () => poster.render();

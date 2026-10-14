@@ -26,12 +26,18 @@ export function createStage(canvas: HTMLCanvasElement) {
   const scene = new THREE.Scene();
 
   const resolution = new THREE.Vector2(); // drawing buffer, device px
+  const stage = { renderer, scene, camera, resolution, setElevation, onResize: () => {} };
+  // Resizing the drawing buffer clears it, and the observer reports only
+  // after this frame was drawn: onResize draws it again straight away, or
+  // the frame goes out blank and the poster flickers while the window is
+  // being resized.
   new ResizeObserver(() => {
     renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
     renderer.getDrawingBufferSize(resolution);
+    stage.onResize();
   }).observe(canvas);
 
-  return { renderer, scene, camera, resolution, setElevation };
+  return stage;
 }
 
 export type Stage = ReturnType<typeof createStage>;
