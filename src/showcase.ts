@@ -110,14 +110,15 @@ export function mountShowcase(
     caption.away(true);
     for (const el of [scrim, shown]) el.getAnimations().forEach((a) => a.cancel());
     shown.style.clipPath = '';
-    const ready = load(entry);
+    const ready = prepare(sheet);
     scene.callOut(sheet).then(async () => {
       if (open?.sheet !== sheet) return;
       frame.classList.add('showing');
       scrim.animate([{ opacity: 0 }, { opacity: SCRIM }], { duration: ms(SCRIM_IN), easing: 'ease-out', fill: 'forwards' });
       turn(sheet);
-      await Promise.all([ready, new Promise((r) => setTimeout(r, ms(WIPE_AFTER)))]);
+      const [src] = await Promise.all([ready, new Promise((r) => setTimeout(r, ms(WIPE_AFTER)))]);
       if (open?.sheet !== sheet) return;
+      img.src = src;
       // From the top down. Once on, the poster keeps that as its own style and
       // the animation goes: an animation held at its end can hand the drawing
       // back and forth and flicker.
@@ -141,9 +142,43 @@ export function mountShowcase(
     return true;
   }
 
-  function load(entry: Entry) {
-    img.src = publicPath(entry.image);
-    return img.decode().catch(() => {});
+  // A sheet's poster, made ready to go up at once: drawn into a bitmap the
+  // size it is shown at (see bitmapOf) and decoded.
+  async function prepare(sheet: Sheet) {
+    const src = await bitmapOf(publicPath(entryOf(sheet)!.image));
+    const ahead = new Image();
+    ahead.src = src;
+    await ahead.decode().catch(() => {});
+    return src;
+  }
+
+  // What goes up is a bitmap, never the poster's SVG itself. The dotted
+  // placeholders are slow to draw, and whenever the browser drew one again
+  // (as the wipe ended, or as the pointer moved over it) it could miss a
+  // frame and the poster blinked; a bitmap is drawn again at once. Drawn
+  // once per poster and size, at the size the poster is shown at (or its own
+  // size, if larger), for the screen's pixels.
+  const bitmaps = new Map<string, Promise<string>>();
+  function bitmapOf(image: string) {
+    const pixels = Math.ceil(shown.offsetHeight * devicePixelRatio);
+    let made = bitmaps.get(`${image} ${pixels}`);
+    if (!made) {
+      made = (async () => {
+        const source = new Image();
+        source.src = image;
+        await source.decode();
+        if (!/\.svg($|\?)/.test(image)) return image; // a bitmap already
+        const height = Math.max(pixels, source.naturalHeight);
+        const canvas = document.createElement('canvas');
+        canvas.height = height;
+        canvas.width = Math.round((height * source.naturalWidth) / source.naturalHeight);
+        canvas.getContext('2d')!.drawImage(source, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done));
+        return blob ? URL.createObjectURL(blob) : image;
+      })().catch(() => image);
+      bitmaps.set(`${image} ${pixels}`, made);
+    }
+    return made;
   }
 
   function close() {
@@ -177,27 +212,22 @@ export function mountShowcase(
     if (!open) return;
     open.at = (open.at + by + roll.length) % roll.length;
     const sheet = roll[open.at];
-    const image = publicPath(entryOf(sheet)!.image);
-    const next = new Image();
-    next.src = image;
-    await next.decode().catch(() => {});
+    const src = await prepare(sheet);
     if (roll[open?.at ?? -1] !== sheet) return;
-    img.src = image;
+    img.src = src;
     fill(sheet);
     warm();
   }
 
-  // The posters either side, fetched and decoded ahead, so a step lands at once.
-  const warmed = new Map<string, HTMLImageElement>();
+  // The posters either side, made ready ahead, so a step lands at once.
+  const warmed = new Set<Sheet>();
   function warm() {
     if (!open) return;
     for (const by of [-1, 1]) {
-      const image = publicPath(entryOf(roll[(open.at + by + roll.length) % roll.length])!.image);
-      if (warmed.has(image)) continue;
-      const ahead = new Image();
-      ahead.src = image;
-      ahead.decode().catch(() => {});
-      warmed.set(image, ahead);
+      const sheet = roll[(open.at + by + roll.length) % roll.length];
+      if (warmed.has(sheet)) continue;
+      warmed.add(sheet);
+      prepare(sheet);
     }
   }
 
