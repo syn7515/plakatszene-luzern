@@ -1,17 +1,19 @@
-// Everything we know about the original print, in one place.
+// The print: its format, as the original's, and the inks this interactive
+// edition is printed in, which are its own.
 
 // F4 (Swiss "Weltformat") in centimetres. One scene unit = 1 cm.
 export const POSTER_SIZE = { width: 89.5, height: 128 } as const;
 
 export const PAPER = '#ffffff';
 
-// Spot inks, sampled from the 100 Beste Plakate scan.
+// A second edition from the same screens in other inks: two of them, so it
+// reads as a variation beside the photo of the original on the wall, not a
+// copy of it. (The original's five, sampled from the 100 Beste Plakate scan:
+// pink #ff1e56, violet #7b4cd0, beige #bfa896, green #00542b, yellow #ffe001;
+// its dots were violet, 25% on paper and 80% over green.)
 export const INK = {
-  pink: '#ff1e56',
-  violet: '#7b4cd0',
-  beige: '#bfa896',
-  green: '#00542b',
-  yellow: '#ffe001',
+  teal: '#007c8c',
+  vermilion: '#ff4a2a',
 } as const;
 
 const channels = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -30,27 +32,32 @@ export function overprint(a: string, b: string): string {
 }
 
 // What one face of a sheet can be printed as. The dots are not shading:
-// they are how five inks make two more flat colours. Violet dots on bare
-// paper give lavender; violet dots over green give a dark green with green
-// showing through. `tone` is the share of the face the dots cover.
+// they are how two inks make every other flat colour, as tints on bare paper
+// and, printed over the other ink, as darks with that ink showing through.
+// `tone` is the share of the face the dots cover.
 export interface Surface {
   label: string;
   ground: string;
   dots?: string;
   tone?: number;
-  ink: string; // what text printed on this surface is set in, as the original pairs them
+  ink: string; // what text printed on this surface is set in
   halo?: boolean; // the dots give way around text, so small type stays readable on the screen
 }
 
+// The names are the original's colours, which composition.json gives every
+// face by. Each is reprinted here at about the original's lightness (OKLCH:
+// paper 1, lavender .92, yellow .90, beige .79, pink .67, violet .54, green
+// .42, darkGreen .33), because with no shading that ladder is what the depth
+// is read from, and it is the grey scene the other sheets drain to on hover.
 export const SURFACES = {
-  pink: { label: '분홍', ground: INK.pink, ink: INK.yellow },
-  violet: { label: '보라', ground: INK.violet, ink: PAPER },
-  beige: { label: '베이지', ground: INK.beige, ink: INK.green },
-  green: { label: '초록', ground: INK.green, ink: INK.yellow },
-  yellow: { label: '노랑', ground: INK.yellow, ink: INK.green },
-  paper: { label: '종이', ground: PAPER, ink: INK.pink },
-  lavender: { label: '연보라 (망점)', ground: PAPER, dots: INK.violet, tone: 0.25, ink: '#000000', halo: true },
-  darkGreen: { label: '짙은 초록 (망점)', ground: INK.green, dots: INK.violet, tone: 0.8, ink: INK.yellow },
+  paper: { label: '종이', ground: PAPER, ink: INK.vermilion },
+  lavender: { label: '청록 망점 25%', ground: PAPER, dots: INK.teal, tone: 0.25, ink: INK.teal, halo: true },
+  yellow: { label: '주홍 망점 40%', ground: PAPER, dots: INK.vermilion, tone: 0.4, ink: INK.teal, halo: true },
+  beige: { label: '청록 망점 60%', ground: PAPER, dots: INK.teal, tone: 0.6, ink: INK.teal, halo: true },
+  pink: { label: '주홍', ground: INK.vermilion, ink: PAPER },
+  violet: { label: '청록', ground: INK.teal, ink: PAPER },
+  green: { label: '청록 + 주홍 망점 55%', ground: INK.teal, dots: INK.vermilion, tone: 0.55, ink: PAPER, halo: true },
+  darkGreen: { label: '주홍 + 청록 망점 92%', ground: INK.vermilion, dots: INK.teal, tone: 0.92, ink: PAPER },
 } satisfies Record<string, Surface>;
 
 export type SurfaceName = keyof typeof SURFACES;

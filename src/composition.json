@@ -1,7 +1,7 @@
 {
   "view": { "elevation": 25 },
   "floor": -40,
-  "print": { "dotPitch": 0.38, "dotAngle": 45, "lavender": 0.25, "darkGreen": 0.8 },
+  "print": { "dotPitch": 0.38, "dotAngle": 45 },
   "spring": { "stiffness": 170, "damping": 15 },
   "sheets": [
     {

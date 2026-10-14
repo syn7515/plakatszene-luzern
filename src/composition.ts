@@ -9,8 +9,6 @@ export interface Composition {
   print: {
     dotPitch: number; // cm; the scan measures about 0.38
     dotAngle: number; // degrees; the scan uses 45
-    lavender: number; // dot coverage of the two halftone surfaces
-    darkGreen: number;
   };
   spring: { stiffness: number; damping: number };
   sheets: SheetSpec[];

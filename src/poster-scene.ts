@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { collisionsOf, findCollisions } from './collisions.ts';
 import type { Composition } from './composition.ts';
 import { printUniforms } from './materials.ts';
-import { POSTER_SIZE, SURFACES } from './poster.ts';
+import { POSTER_SIZE } from './poster.ts';
 import { Sheet, type SheetSpec } from './sheet.ts';
 import type { Stage } from './stage.ts';
 
@@ -149,8 +149,6 @@ export class PosterScene {
   // Push view, print and spring settings to every sheet.
   applyGlobals() {
     const { view, print, spring } = this.composition;
-    SURFACES.lavender.tone = print.lavender;
-    SURFACES.darkGreen.tone = print.darkGreen;
     printUniforms.uDotAngle.value = THREE.MathUtils.degToRad(print.dotAngle);
     this.stage.setElevation(view.elevation);
     for (const sheet of this.sheets) {
