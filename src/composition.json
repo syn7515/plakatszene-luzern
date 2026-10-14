@@ -125,7 +125,7 @@
     },
     {
       "id": "n-dark",
-      "position": [35.5, -40, 16.9],
+      "position": [35.4, -40, 16.8],
       "rotation": [0, -143, 0],
       "curl": 0.44,
       "shape": {
@@ -139,7 +139,7 @@
       },
       "faces": ["darkGreen", "green", "yellow", "green", "yellow", "green"],
       "grounded": true,
-      "label": { "title": "Poster 008", "name": "Sven Marti", "at": 2.5, "y": 36.8, "side": "back" }
+      "label": { "title": "Poster 008", "name": "Sven Marti", "at": 22.5, "y": 36.8, "side": "back" }
     },
     {
       "id": "n-wrap",
