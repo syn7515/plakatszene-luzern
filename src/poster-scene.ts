@@ -55,11 +55,10 @@ const REFINE = 3;
 const REFINE_CLOSE = 0.002; // curl
 
 // A sheet called out slides lengthwise along its own path and out of the
-// frame (see callOut), at about this speed: slow to start, then drawn away
-// ever faster, the way paper is sucked off a pile, never slowing down.
+// frame (see callOut), at about this speed, on the opening's curve (EASE):
+// it starts shyly, is drawn away fast and slips out the last of the way.
 const OUT_SPEED = 130; // cm per second, on average
 const OUT_TIME = [1, 1.9] as const; // s, at least and at most
-const drawnAway = (x: number) => (x * x * (3 - x)) / 2;
 
 // A steady number in 0..1 from a sheet's id, so each sheet keeps its rhythm.
 function noise(id: string) {
@@ -478,7 +477,7 @@ export class PosterScene {
     for (const [sheet, out] of this.calledOut) {
       if (out.time >= out.duration) continue;
       out.time = Math.min(out.time + dt, out.duration);
-      sheet.geometry.travelled = out.travel * drawnAway(out.time / out.duration);
+      sheet.geometry.travelled = out.travel * ease(out.time / out.duration);
       if (out.time >= out.duration) out.gone();
     }
   }
