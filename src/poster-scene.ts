@@ -46,6 +46,11 @@ const REVEAL = 0.06; // s
 // once, small, with every sheet in an id of its own and its depth.
 const SIGHT = 480; // px, the height of that drawing
 const SIGHT_DEPTH = 1.5; // cm; a point this close to what shows of its sheet counts as seen
+// A pulled (or swinging) sheet that meets paper stops where it meets it:
+// the curl is bisected this many times between clear and blocked, unless
+// the two are already this close.
+const REFINE = 3;
+const REFINE_CLOSE = 0.002; // curl
 
 // A steady number in 0..1 from a sheet's id, so each sheet keeps its rhythm.
 function noise(id: string) {
@@ -76,8 +81,21 @@ export class PosterScene {
   readonly composition: Composition;
   onUpdate?: () => void;
   // The sheet being pulled, if any: it may not pass through paper or the
-  // floor, so each frame it is checked and, where it would, held back.
-  held: Sheet | null = null;
+  // floor, so each frame it is checked and, where it would, held back. That
+  // goes on after it is let go, for as long as its spring still swings.
+  get held() {
+    return this.heldSheet;
+  }
+  set held(sheet: Sheet | null) {
+    this.heldSheet = sheet;
+    // Taken hold of: where it stands now is the last clear curl, unless it
+    // already touches something, in which case it is let move.
+    if (sheet) {
+      sheet.safeCurl = NaN;
+      this.holdBack(sheet, sheet.follows ? this.leaderOf(sheet)?.guide() : undefined);
+    }
+  }
+  private heldSheet: Sheet | null = null;
   // The sheet under the pointer, if any: once the sheets are in, the others lose their colour.
   hovered: Sheet | null = null;
 
@@ -416,7 +434,7 @@ export class PosterScene {
     for (const sheet of this.inBuildOrder()) {
       const leader = sheet.follows ? this.leaderOf(sheet) : undefined;
       sheet.update(dt, this.towardsCamera, leader?.guide());
-      if (sheet === this.held) this.holdBack(sheet, leader?.guide());
+      if (sheet.spring.moving) this.holdBack(sheet, leader?.guide());
     }
     // Changed sheets get their labels placed afresh, once they are whole.
     if (!this.intro) this.placeLabels(this.sheets.filter((s) => s.labelStale && s.extent >= 1));
@@ -493,22 +511,44 @@ export class PosterScene {
     }));
   }
 
-  // Paper stops at paper. If the pulled sheet now runs through another (or
-  // the floor), put it back at the last curl where it did not, and make the
-  // spring rest against that curl instead of passing it.
+  // Paper stops at paper. If the sheet, pulled or still swinging from a
+  // pull, would now run through another (or the floor), it goes only as far
+  // as it can: the curl is bisected between the last clear one and this one,
+  // and the spring rests against the curl found instead of passing it. Its
+  // followers move along with it, so they are checked too.
   private holdBack(sheet: Sheet, guide?: ReturnType<Sheet['guide']>) {
-    const others = this.sheets.filter((s) => s !== sheet && this.leaderOf(s) !== sheet);
+    const followers = this.followersOf(sheet);
+    const moving = new Set([sheet, ...followers]);
+    const others = this.sheets.filter((s) => !moving.has(s));
+    const floor = this.composition.floor;
+    const place = () => {
+      for (const follower of followers) follower.update(0, this.towardsCamera, sheet.guide());
+    };
+    const free = () => [sheet, ...followers].every((s) => collisionsOf(s, others, floor).length === 0);
     const curl = sheet.spring.value;
-    if (collisionsOf(sheet, others, this.composition.floor).length === 0) {
+    place();
+    if (free()) {
       sheet.safeCurl = curl;
       return;
     }
     if (Number.isNaN(sheet.safeCurl)) return; // started inside something; let it move
-    if (curl < sheet.safeCurl) sheet.spring.min = sheet.safeCurl;
-    else sheet.spring.max = sheet.safeCurl;
-    sheet.spring.value = sheet.safeCurl;
+    let safe = sheet.safeCurl;
+    let blocked = curl;
+    for (let i = 0; i < REFINE && Math.abs(blocked - safe) > REFINE_CLOSE; i++) {
+      const mid = (safe + blocked) / 2;
+      sheet.spring.value = mid;
+      sheet.update(0, this.towardsCamera, guide);
+      place();
+      if (free()) safe = mid;
+      else blocked = mid;
+    }
+    if (curl < sheet.safeCurl) sheet.spring.min = safe;
+    else sheet.spring.max = safe;
+    sheet.safeCurl = safe;
+    sheet.spring.value = safe;
     sheet.spring.velocity = 0;
     sheet.update(0, this.towardsCamera, guide);
+    place();
   }
 
   // Followers after the sheets they follow; a loop breaks where it closes.

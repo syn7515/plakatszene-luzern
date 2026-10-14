@@ -17,6 +17,12 @@ export class Spring {
     this.target = value;
   }
 
+  // Whether the value is still on its way: in the pointer's hand, or
+  // swinging on its own.
+  get moving() {
+    return this.held || this.velocity !== 0 || this.value !== this.target;
+  }
+
   step(dt: number) {
     if (this.held) return;
     let remaining = Math.min(dt, 1 / 30);
