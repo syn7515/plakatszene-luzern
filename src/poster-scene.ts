@@ -450,7 +450,7 @@ export class PosterScene {
     const stood = sheet.guide();
     const others = this.sheets.filter((s) => s !== sheet).map((s) => s.guide());
     const frame = { halfWidth: POSTER_SIZE.width / 2, halfHeight: POSTER_SIZE.height / 2, elevation: this.composition.view.elevation };
-    const { rail, travel, exit } = wayOut(stood, others, frame, sheet.geometry.stationLength, sheet.spec.exit);
+    const { rail, travel, exit } = wayOut(stood, others, frame, sheet.geometry.stationLength, sheet.spec.exit, sheet.spec.way);
     // Into the sheet's own space (a follower's is the world's).
     sheet.mesh.updateMatrixWorld();
     const toSheet = sheet.mesh.matrixWorld.clone().invert();

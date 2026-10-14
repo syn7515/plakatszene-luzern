@@ -18,6 +18,10 @@ import type { Guide, Rail } from './strip-geometry.ts';
 // Only if every one would touch paper is the way found across a grid
 // instead, pulled taut and rounded off, a route that winds if it must.
 //
+// A way may also be drawn by hand (a sheet's `way`): from the end nearer its
+// first point, through its points as one rounded line, and on in its last
+// direction until out of the frame.
+//
 // The poster is flat and has no shadows, so paper seen sliding in front of
 // other paper reads as passing through it, while paper sliding behind other
 // paper simply goes behind it, and what matters is how much of its going is
@@ -42,6 +46,7 @@ import type { Guide, Rail } from './strip-geometry.ts';
 const CLEAR = 2; // cm the way out keeps from other paper, and from its own away from the end
 const OWN_NEAR = 6; // cm of its own paper next to the end that the way out may run close to
 const LEAD_IN = 3; // cm the way out first carries on in the end's own direction
+const TURN_IN = 12; // cm more it carries on before a drawn way turning square from it
 const PAST = 4; // cm past the frame's edge where the way out straightens
 const CELL = 1; // cm, the grid the way is found on
 const BASE = 0.4; // cost of a cm travelled, seen or not
@@ -163,6 +168,40 @@ function round(line: Point[], passes: number) {
   return points;
 }
 
+// A rounded line through the points (centripetal Catmull-Rom), a point
+// about every cm.
+function spline(points: Point[]): Point[] {
+  const at = (i: number): Point =>
+    i < 0
+      ? [2 * points[0][0] - points[1][0], 2 * points[0][1] - points[1][1]]
+      : i >= points.length
+        ? [2 * points[points.length - 1][0] - points[points.length - 2][0], 2 * points[points.length - 1][1] - points[points.length - 2][1]]
+        : points[i];
+  const knot = (a: Point, b: Point) => Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])) || 1e-4;
+  const mix = (a: Point, b: Point, ta: number, tb: number, t: number): Point => {
+    const [u, v] = [(tb - t) / (tb - ta), (t - ta) / (tb - ta)];
+    return [u * a[0] + v * b[0], u * a[1] + v * b[1]];
+  };
+  const line: Point[] = [points[0]];
+  for (let i = 0; i < points.length - 1; i++) {
+    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
+    const t1 = knot(p0, p1);
+    const t2 = t1 + knot(p1, p2);
+    const t3 = t2 + knot(p2, p3);
+    const steps = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1])));
+    for (let k = 1; k <= steps; k++) {
+      const t = t1 + ((t2 - t1) * k) / steps;
+      const a1 = mix(p0, p1, 0, t1, t);
+      const a2 = mix(p1, p2, t1, t2, t);
+      const a3 = mix(p2, p3, t2, t3, t);
+      const b1 = mix(a1, a2, 0, t2, t);
+      const b2 = mix(a2, a3, t1, t3, t);
+      line.push(mix(b1, b2, t1, t2, t));
+    }
+  }
+  return line;
+}
+
 function turningOf(line: Point[]) {
   let turning = 0;
   for (let i = 2; i < line.length; i++) {
@@ -173,7 +212,7 @@ function turningOf(line: Point[]) {
   return turning;
 }
 
-export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, only?: Exit) {
+export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, only?: Exit, drawn?: Point[]) {
   const n = own.bottom.length / 3 - 1;
   const half = frame.halfWidth;
   const look = (frame.elevation * Math.PI) / 180;
@@ -220,27 +259,17 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
     }
   }
 
-  type Option = { cost: number; lead: Rail['lead']; exit: Exit; line: Point[] };
-  let best: Option | null = null;
-  for (const lead of ['tip', 'anchor'] as const) {
+  // One end of the paper: where it is, which way it points (outwards, over
+  // its last few stations), how high its edges stand, and where, for paper
+  // leaving from it, the frame has been left.
+  const endOf = (lead: Rail['lead']) => {
     const end = lead === 'tip' ? n : 0;
-    const near = Math.round(OWN_NEAR / ds);
-    const skip = (tag: number) => tag >= 0 && Math.abs(tag - end) <= near;
-    // The end's own direction, outwards, over its last few stations.
     const back = lead === 'tip' ? Math.max(0, n - 10) : Math.min(n, 10);
     const [ex, ez] = at(own.bottom, end);
     const [bx, bz] = at(own.bottom, back);
     const dl = Math.hypot(ex - bx, ez - bz) || 1;
-    const [tx, tz] = [(ex - bx) / dl, (ez - bz) / dl];
     const yb = own.bottom[3 * end + 1];
     const yt = own.top[3 * end + 1];
-    const zTop = (yb * Math.cos(look) - frame.halfHeight - PAST) / Math.sin(look);
-    const zBottom = (yt * Math.cos(look) + frame.halfHeight + PAST) / Math.sin(look);
-
-    // Still in sight there: inside the side edges, not yet risen past the top
-    // nor sunk below the bottom.
-    const inSight = (x: number, z: number) =>
-      Math.abs(x) <= half + 1 && up(yb, z) <= frame.halfHeight + 1 && up(yt, z) >= -frame.halfHeight - 1;
     const out = (x: number, z: number): Exit | null =>
       up(yb, z) > frame.halfHeight + PAST
         ? 'top'
@@ -251,6 +280,53 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
             : x < -half - PAST
               ? 'left'
               : null;
+    return { end, ex, ez, tx: (ex - bx) / dl, tz: (ez - bz) / dl, yb, yt, out };
+  };
+
+  type Option = { cost: number; lead: Rail['lead']; exit: Exit; line: Point[] };
+  let best: Option | null = null;
+
+  // Drawn by hand: from the end nearer its first point, in its own direction
+  // and through the points as one rounded line, then on the way it last went
+  // until out of the frame.
+  if (drawn && drawn.length > 0) {
+    const [x0, z0] = drawn[0];
+    const [tip, anchor] = [at(own.bottom, n), at(own.bottom, 0)];
+    const lead = Math.hypot(x0 - tip[0], z0 - tip[1]) <= Math.hypot(x0 - anchor[0], z0 - anchor[1]) ? 'tip' : 'anchor';
+    const { ex, ez, tx, tz, out } = endOf(lead);
+    // The sharper the turn from the end's own direction onto the drawing,
+    // the longer the paper carries on first, so it bends round, not over.
+    const from = drawn.find(([x, z]) => Math.hypot(x - ex, z - ez) >= 4) ?? drawn[drawn.length - 1];
+    const turn = Math.abs(Math.atan2(tx * (from[1] - ez) - tz * (from[0] - ex), tx * (from[0] - ex) + tz * (from[1] - ez)));
+    const lead_in = LEAD_IN + TURN_IN * Math.min(1, turn / (Math.PI / 2));
+    const onward = drawn.filter(([x, z]) => Math.hypot(x - ex, z - ez) >= lead_in + LEAD_IN);
+    const line = spline([[ex, ez], [ex + tx * lead_in, ez + tz * lead_in], ...(onward.length ? onward : drawn.slice(-1))]);
+    let at0 = line.findIndex(([x, z]) => out(x, z));
+    if (at0 >= 0) line.length = at0 + 1;
+    const [qx, qz] = line[line.length - 2];
+    let [lx, lz] = line[line.length - 1];
+    const step = Math.hypot(lx - qx, lz - qz) || 1;
+    const [dx, dz] = [(lx - qx) / step, (lz - qz) / step];
+    for (let k = 0; at0 < 0 && k < LONGEST; k++) {
+      [lx, lz] = [lx + dx, lz + dz];
+      line.push([lx, lz]);
+      if (out(lx, lz)) at0 = line.length - 1;
+    }
+    line.push([lx + dx * 10, lz + dz * 10]);
+    best = { cost: 0, lead, exit: out(...line[line.length - 2]) ?? 'top', line };
+  }
+
+  for (const lead of best ? [] : (['tip', 'anchor'] as const)) {
+    const { end, ex, ez, tx, tz, yb, yt, out } = endOf(lead);
+    const near = Math.round(OWN_NEAR / ds);
+    const skip = (tag: number) => tag >= 0 && Math.abs(tag - end) <= near;
+    const zTop = (yb * Math.cos(look) - frame.halfHeight - PAST) / Math.sin(look);
+    const zBottom = (yt * Math.cos(look) + frame.halfHeight + PAST) / Math.sin(look);
+
+    // Still in sight there: inside the side edges, not yet risen past the top
+    // nor sunk below the bottom.
+    const inSight = (x: number, z: number) =>
+      Math.abs(x) <= half + 1 && up(yb, z) <= frame.halfHeight + 1 && up(yt, z) >= -frame.halfHeight - 1;
     // How the frame shows the paper there: over another sheet (in front of it
     // and overlapping it), hidden behind one (one in front of it covering most
     // of its height), or just seen.
