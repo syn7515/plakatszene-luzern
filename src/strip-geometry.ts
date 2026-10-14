@@ -78,6 +78,18 @@ export interface Droop {
 }
 const DROOP_BOTTOM = 0.4; // the bottom edge's share of the turn
 
+// The track a called-out sheet leaves by: its own path, then a way out past
+// the frame (see way-out.ts). The paper slides along it lengthwise, every
+// point the same distance on, so the end that goes first takes the way out
+// and the end that comes last passes through every bend the paper made.
+// Both edges, in this geometry's space, a station's length apart, in the
+// order the paper travels them.
+export interface Rail {
+  bottom: Float32Array;
+  top: Float32Array;
+  lead: 'tip' | 'anchor'; // the end that goes first
+}
+
 const SEGMENTS = 600;
 const RAMP = 0.45; // share of the shorter of two neighbouring bends over which they blend
 const BLEND = 3; // cm over which the flattened part eases into the curled part
@@ -143,11 +155,16 @@ export class StripGeometry extends THREE.BufferGeometry {
   droop: Droop | null = null;
   baseY = 0; // height of the bottom edge; only followers set it
   version = 0; // bumped every rebuild, so followers know when to re-trace
+  // Leaving along a rail, this many cm along it so far; the shape, curl and
+  // the rest are set aside until the rail is taken away.
+  rail: Rail | null = null;
+  travelled = 0;
 
   private curl = NaN;
   private extent = 1;
   private drooped = 0;
   private relax = 0;
+  private slid = NaN;
   private stale = true;
   private builtAgainst = -1;
   private readonly view = new THREE.Vector3();
@@ -180,6 +197,13 @@ export class StripGeometry extends THREE.BufferGeometry {
     this.stale = true;
   }
 
+  // Put the paper on a rail, at its start, or (null) back on its own shape.
+  ride(rail: Rail | null) {
+    this.rail = rail;
+    this.travelled = 0;
+    this.stale = true;
+  }
+
   // Bottom and top edge points (x, y, z) of every station, as last built; the
   // paper runs straight between each pair.
   // The visible face (see countFaces) that the paper belongs to at a station.
@@ -204,6 +228,12 @@ export class StripGeometry extends THREE.BufferGeometry {
   // relax: every bend this much looser than drawn (negative: tighter); the
   // breathing of a settled sheet.
   update(curl: number, towardsCamera: THREE.Vector3, guide?: Guide, extent = 1, drooped = 0, relax = 0) {
+    if (this.rail) {
+      const moved = this.stale || this.travelled !== this.slid;
+      if (moved) this.slide(this.rail);
+      if (moved || !this.view.equals(towardsCamera)) this.countFaces(towardsCamera);
+      return;
+    }
     const bent =
       this.stale ||
       curl !== this.curl ||
@@ -331,6 +361,32 @@ export class StripGeometry extends THREE.BufferGeometry {
       for (let i = live + 1; i <= SEGMENTS; i++) edge.copyWithin(3 * i, 3 * live, 3 * live + 3);
     }
 
+    this.writePositions();
+  }
+
+  // Every station `travelled` cm further along the rail than it started.
+  private slide(rail: Rail) {
+    this.stale = false;
+    this.slid = this.travelled;
+    this.version++;
+    const last = rail.bottom.length / 3 - 1;
+    const shift = this.travelled / this.stationLength;
+    for (let i = 0; i <= SEGMENTS; i++) {
+      const k = Math.min((rail.lead === 'tip' ? i : SEGMENTS - i) + shift, last);
+      const k0 = Math.floor(k);
+      const k1 = Math.min(k0 + 1, last);
+      const f = k - k0;
+      for (const [from, to] of [
+        [rail.bottom, this.bottom],
+        [rail.top, this.top],
+      ]) {
+        for (let c = 0; c < 3; c++) to[3 * i + c] = from[3 * k0 + c] + (from[3 * k1 + c] - from[3 * k0 + c]) * f;
+      }
+    }
+    this.writePositions();
+  }
+
+  private writePositions() {
     const [b, t] = [this.bottom, this.top];
     for (let i = 0; i < SEGMENTS; i++) {
       this.positions.set(b.subarray(3 * i, 3 * i + 3), i * 12);

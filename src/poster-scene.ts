@@ -5,6 +5,8 @@ import { printUniforms } from './materials.ts';
 import { POSTER_SIZE } from './poster.ts';
 import { Sheet, type SheetSpec } from './sheet.ts';
 import type { Stage } from './stage.ts';
+import type { Guide } from './strip-geometry.ts';
+import { wayOut } from './way-out.ts';
 
 const MIN_DOT_PX = 3; // CSS px; finer than this and the dots blur into a flat tint
 
@@ -51,6 +53,13 @@ const SIGHT_DEPTH = 1.5; // cm; a point this close to what shows of its sheet co
 // the two are already this close.
 const REFINE = 3;
 const REFINE_CLOSE = 0.002; // curl
+
+// A sheet called out slides lengthwise along its own path and out of the
+// frame (see callOut), at about this speed: slow to start, then drawn away
+// ever faster, the way paper is sucked off a pile, never slowing down.
+const OUT_SPEED = 130; // cm per second, on average
+const OUT_TIME = [1, 1.9] as const; // s, at least and at most
+const drawnAway = (x: number) => (x * x * (3 - x)) / 2;
 
 // A steady number in 0..1 from a sheet's id, so each sheet keeps its rhythm.
 function noise(id: string) {
@@ -110,6 +119,11 @@ export class PosterScene {
   private readonly breath = new Map<Sheet, number>();
   // Per settled sheet: seconds breathing, how far it may move, its two periods.
   private readonly breathing = new Map<Sheet, { time: number; amount: number; periods: [number, number] }>();
+
+  // Sheets called out: how far they go, how long it takes and how far along
+  // they are; and their edges as they stood, which their followers keep
+  // leaning on, so these stay where they were.
+  private readonly calledOut = new Map<Sheet, { travel: number; time: number; duration: number; stood: Guide; gone: () => void }>();
 
   private readonly stage: Stage;
   private readonly towardsCamera = new THREE.Vector3();
@@ -423,16 +437,64 @@ export class PosterScene {
     }
   }
 
+  // Call a sheet out: it slides lengthwise along its own path, the end
+  // nearer a way out first, and on along a smooth way out through the left or
+  // right edge of the frame that keeps clear of every other sheet (see
+  // way-out.ts), so the end that goes last passes through every bend the
+  // paper made. Resolves with the side it left by (-1 left, 1 right) once it
+  // is out of the frame. Sheets that lean on it stay as they were. It stays
+  // out until put back.
+  callOut(sheet: Sheet): Promise<1 | -1> {
+    this.putBack(sheet);
+    const stood = sheet.guide();
+    const others = this.sheets.filter((s) => s !== sheet).map((s) => s.guide());
+    const { rail, travel, side } = wayOut(stood, others, POSTER_SIZE.width / 2, sheet.geometry.stationLength);
+    // Into the sheet's own space (a follower's is the world's).
+    sheet.mesh.updateMatrixWorld();
+    const toSheet = sheet.mesh.matrixWorld.clone().invert();
+    const p = new THREE.Vector3();
+    for (const edge of [rail.bottom, rail.top]) {
+      for (let i = 0; i < edge.length; i += 3) {
+        p.fromArray(edge, i).applyMatrix4(toSheet).toArray(edge, i);
+      }
+    }
+    sheet.geometry.ride(rail);
+    const duration = THREE.MathUtils.clamp(travel / OUT_SPEED, ...OUT_TIME);
+    return new Promise((resolve) => {
+      this.calledOut.set(sheet, { travel, time: 0, duration, stood, gone: () => resolve(side) });
+    });
+  }
+
+  // Back where it stood, at once, as it was.
+  putBack(sheet: Sheet) {
+    const out = this.calledOut.get(sheet);
+    if (!out) return;
+    this.calledOut.delete(sheet);
+    sheet.geometry.ride(null);
+    out.gone();
+  }
+
+  private leave(dt: number) {
+    for (const [sheet, out] of this.calledOut) {
+      if (out.time >= out.duration) continue;
+      out.time = Math.min(out.time + dt, out.duration);
+      sheet.geometry.travelled = out.travel * drawnAway(out.time / out.duration);
+      if (out.time >= out.duration) out.gone();
+    }
+  }
+
   update(dt: number) {
     this.grow(dt);
     this.settle(dt);
     this.breathe(dt);
     this.focus(dt);
+    this.leave(dt);
     this.stage.camera.getWorldDirection(this.towardsCamera).negate();
     for (const sheet of this.inBuildOrder()) {
       const leader = sheet.follows ? this.leaderOf(sheet) : undefined;
-      sheet.update(dt, this.towardsCamera, leader?.guide());
-      if (sheet.spring.moving) this.holdBack(sheet, leader?.guide());
+      const guide = leader && (this.calledOut.get(leader)?.stood ?? leader.guide());
+      sheet.update(dt, this.towardsCamera, guide);
+      if (sheet.spring.moving && !this.calledOut.has(sheet)) this.holdBack(sheet, guide);
     }
     // Changed sheets get their labels placed afresh, once they are whole.
     if (!this.intro) this.placeLabels(this.sheets.filter((s) => s.labelStale && s.extent >= 1));
