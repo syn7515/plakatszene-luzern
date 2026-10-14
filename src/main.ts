@@ -1,3 +1,4 @@
+import { inject } from '@vercel/analytics';
 import { mountCaption } from './caption.ts';
 import { initialComposition } from './composition.ts';
 import { labelFontLoaded } from './label.ts';
@@ -5,6 +6,15 @@ import { PosterScene } from './poster-scene.ts';
 import { enablePull } from './pull.ts';
 import { mountShowcase, type Showcase } from './showcase.ts';
 import { createStage } from './stage.ts';
+
+// Page views, to this project's Web Analytics on Vercel (built only). The
+// page is seen at suepark.xyz/experiments/1, so its script and its reports go
+// by that path too, which the portfolio passes on to this project; the
+// domain's own /_vercel/insights belongs to the portfolio.
+if (import.meta.env.PROD) {
+  const insights = `${import.meta.env.BASE_URL}_vercel/insights`;
+  inject({ scriptSrc: `${insights}/script.js`, endpoint: insights });
+}
 
 // Dev only: open with ?edit to trace the original and arrange sheets.
 // The editor skips the opening so the sheets are there to work on, and
