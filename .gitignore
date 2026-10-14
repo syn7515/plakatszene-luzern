@@ -6,3 +6,7 @@ dist
 
 # Licensed fonts (Dinamo): their terms forbid putting them in a public repository
 public/fonts/
+
+# The Vercel CLI's link to the project, and its local environment (a token)
+.vercel
+.env*

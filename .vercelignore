@@ -1,0 +1,9 @@
+# A deploy from the command line uploads this folder: leave out what a build
+# from GitHub would not have either, the licensed fonts above all (the build
+# fetches them itself, scripts/fonts.mjs), and local secrets.
+public/fonts
+.env*
+*.local
+node_modules
+dist
+.claude
