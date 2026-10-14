@@ -34,8 +34,16 @@ export interface SheetSpec {
   exit?: 'left' | 'right' | 'top' | 'bottom';
   // A way out drawn by hand: points in plan, cm ([x across, z towards the
   // viewer]), from the end nearer the first; taken through as one rounded
-  // line instead of a way worked out. Comes before `exit`.
+  // line (a few meeting smoothly where one would touch other paper) instead
+  // of a way worked out. Comes before `exit`.
   way?: [number, number][];
+  // Which end goes first when called out: the tip (the free end) or the
+  // anchor (where the paper starts); worked out, or taken from `way`, when
+  // not given.
+  lead?: 'tip' | 'anchor';
+  // Sheets (by id) it passes behind when called out: they show in front of
+  // it wherever they are seen, even where its way out runs through them.
+  behind?: string[];
 }
 
 // A title and a name printed on the paper, shown on hover. Where it goes the
