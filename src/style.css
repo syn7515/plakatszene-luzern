@@ -254,7 +254,10 @@ body.editing .caption {
    --small (about its centre); caption.ts brings it out and back by animating
    its transform. Its box is the size it is scaled from when it comes out, so
    only the tucked print is smaller. .paper is the photo print itself, border
-   included. */
+   included. No will-change: with it the browser keeps the print drawn at the
+   size it was tucked at and only stretches that when it comes out, about
+   twice as large, so the photo and its note go soft; without it the print is
+   drawn again, sharp, once it has come out. */
 .print {
   --tuck: -5deg;
   --small: 0.8;
@@ -276,7 +279,6 @@ body.editing .caption {
   text-align: left;
   cursor: pointer;
   transform: rotate(var(--tuck)) scale(var(--small));
-  will-change: transform;
 }
 
 .print:focus-visible {
