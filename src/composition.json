@@ -105,7 +105,8 @@
       "faces": ["green", "yellow", "pink", "green", "pink", "green"],
       "grounded": true,
       "pull": { "from": 44.5, "to": 56.5, "topLag": 0.3 },
-      "label": { "title": "Poster 006", "name": "Till Hofer" }
+      "label": { "title": "Poster 006", "name": "Till Hofer" },
+      "exit": "bottom"
     },
     {
       "id": "violet-beige-panel",
@@ -164,7 +165,7 @@
     },
     {
       "id": "eintritt",
-      "position": [16.3, -18, 85.5],
+      "position": [16.3, -40, 40],
       "rotation": [0, 180, 0],
       "curl": 1,
       "shape": {
@@ -177,7 +178,8 @@
         ]
       },
       "faces": ["lavender", "paper", "pink", "paper", "pink", "paper"],
-      "label": { "title": "Poster 010", "name": "Luca Steiner" }
+      "label": { "title": "Poster 010", "name": "Luca Steiner" },
+      "grounded": true
     },
     {
       "id": "violet-pink-yellow",

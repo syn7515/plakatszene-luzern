@@ -4,8 +4,8 @@
 // The sheet is called out first: it slides along its own path and out of the
 // frame (PosterScene.callOut). Then a white scrim comes over the poster, the
 // other sheets still faintly there behind it, and the real poster is wiped
-// on over the scrim from the edge the sheet left by, a little smaller than
-// the frame. The wall label turns to that poster, its heading becoming the
+// on over the scrim from the top, whichever way the sheet left, a little
+// smaller than the frame. The wall label turns to that poster, its heading becoming the
 // roll to step through (‹ 09 / 18 ›, or the arrow keys) with the way back at
 // its other end, both on the wall above the card. Turning to a poster
 // and back, and stepping, only change what the label says: its white card
@@ -61,7 +61,9 @@ export function mountShowcase(
   const shown = document.createElement('figure');
   shown.className = 'shown-poster';
   const img = document.createElement('img');
-  img.decoding = 'async';
+  // Decoded before it goes up (load); drawn at once whenever the browser
+  // draws it again, never a frame of nothing while it decodes.
+  img.decoding = 'sync';
   shown.append(img);
   frame.append(scrim, shown);
 
@@ -107,8 +109,9 @@ export function mountShowcase(
     pull.enabled = false;
     caption.away(true);
     for (const el of [scrim, shown]) el.getAnimations().forEach((a) => a.cancel());
+    shown.style.clipPath = '';
     const ready = load(entry);
-    scene.callOut(sheet).then(async (exit) => {
+    scene.callOut(sheet).then(async () => {
       if (open?.sheet !== sheet) return;
       frame.classList.add('showing');
       warm();
@@ -116,9 +119,22 @@ export function mountShowcase(
       turn(sheet);
       await Promise.all([ready, new Promise((r) => setTimeout(r, ms(WIPE_AFTER)))]);
       if (open?.sheet !== sheet) return;
-      // From the edge it left by: out at the right (or the top), it comes on from there.
-      const from = { right: 'inset(0 0 0 100%)', left: 'inset(0 100% 0 0)', top: 'inset(0 0 100% 0)' }[exit];
-      shown.animate([{ clipPath: from }, { clipPath: 'inset(0 0 0 0)' }], { duration: ms(WIPE), easing: EASE, fill: 'forwards' });
+      // From the top down. Once on, the poster keeps that as its own style and
+      // the animation goes: an animation held at its end can hand the drawing
+      // back and forth and flicker.
+      const wipe = shown.animate([{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0 0)' }], {
+        duration: ms(WIPE),
+        easing: EASE,
+        fill: 'forwards',
+      });
+      wipe.finished.then(
+        () => {
+          if (open?.sheet !== sheet) return;
+          shown.style.clipPath = 'inset(0 0 0 0)';
+          wipe.cancel();
+        },
+        () => {},
+      );
     });
     return true;
   }
@@ -144,6 +160,7 @@ export function mountShowcase(
         if (open) return;
         frame.classList.remove('showing');
         for (const el of [scrim, shown]) el.getAnimations().forEach((a) => a.cancel());
+        shown.style.clipPath = '';
       },
       () => {},
     );

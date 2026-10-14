@@ -391,7 +391,7 @@ body.editing .caption {
   aspect-ratio: var(--poster-ratio);
   margin: 0;
   translate: -50% 0;
-  clip-path: inset(0 0 0 100%); /* wiped on by showcase.ts */
+  clip-path: inset(0 0 100% 0); /* wiped on from the top by showcase.ts */
   cursor: zoom-out;
 }
 
