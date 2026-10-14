@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 895 1280" width="895" height="1280">
+<defs><pattern id="d" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="11" cy="11" r="7.5" fill="#ff4a2a"/></pattern></defs>
+<rect width="895" height="1280" fill="#007c8c"/>
+<rect x="76" y="462" width="120" height="518" rx="60" fill="#ff4a2a"/><rect x="247" y="309" width="120" height="671" rx="60" fill="url(#d)"/><rect x="385" y="370" width="120" height="610" rx="60" fill="#ff4a2a"/><rect x="553" y="336" width="120" height="644" rx="60" fill="url(#d)"/><rect x="705" y="353" width="120" height="627" rx="60" fill="#ff4a2a"/>
+<g font-family='"Helvetica Neue", Helvetica, Arial, sans-serif' fill="#ffffff">
+<text x="48" y="96" font-size="44" font-weight="500">Poster 018</text>
+<text x="48" y="146" font-size="44">Pit Dubach</text>
+<text x="847" y="96" font-size="24" text-anchor="end" opacity="0.7">Placeholder</text>
+<text x="40" y="1230" font-size="300" font-weight="500" letter-spacing="-12" fill="#ffffff">018</text>
+</g>
+</svg>

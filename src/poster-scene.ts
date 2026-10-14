@@ -424,9 +424,11 @@ export class PosterScene {
     }
   }
 
-  // The hovered sheet keeps its colour and every other one drains to grey.
+  // The hovered sheet keeps its colour and every other one drains to grey;
+  // a sheet called out holds the focus while it is out.
   private focus(dt: number) {
-    const focused = this.ready ? this.hovered : null;
+    const called = this.calledOut.keys().next().value;
+    const focused = this.ready ? (called ?? this.hovered) : null;
     const k = 1 - Math.exp(-dt / FOCUS);
     const kr = 1 - Math.exp(-dt / REVEAL);
     for (const sheet of this.sheets) {

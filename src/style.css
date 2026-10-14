@@ -357,6 +357,112 @@ body.editing .caption {
     opacity 0.3s var(--ease) 0.25s;
 }
 
+/* --- A poster shown (showcase.ts) --------------------------------------------
+   A tapped sheet slides out of the frame; then a white scrim comes over the
+   poster, the sheets still faintly there behind it, and the real poster is
+   wiped on over it, a little smaller than the frame. A click anywhere on it
+   puts it all away. The label turns to that poster meanwhile. */
+
+.scrim,
+.shown-poster {
+  visibility: hidden;
+}
+
+.poster-frame.showing .scrim,
+.poster-frame.showing .shown-poster {
+  visibility: visible;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  cursor: zoom-out;
+}
+
+.shown-poster {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  height: 84%;
+  aspect-ratio: var(--poster-ratio);
+  margin: 0;
+  translate: -50% 0;
+  clip-path: inset(0 0 0 100%); /* wiped on by showcase.ts */
+  cursor: zoom-out;
+}
+
+.shown-poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A hairline, so a poster on white paper still has an edge on the scrim. */
+.shown-poster::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+  pointer-events: none;
+}
+
+/* The label, turned to the poster shown: its own heading (the roll to step
+   through) and card take the place of the original's, and the photo of the
+   original stays tucked away. */
+.caption .label {
+  transition: opacity 0.18s var(--ease); /* showcase.ts's TURN */
+}
+
+.caption .label.turning {
+  opacity: 0;
+}
+
+.label .called,
+.label.calling .kind:not(.called),
+.label.calling .card:not(.called) {
+  display: none;
+}
+
+.label.calling .called {
+  display: block;
+}
+
+.print.away {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease);
+}
+
+.caption .kind .step {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.caption .kind .step:first-child {
+  padding-left: 0;
+}
+
+.caption button.link {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.caption .link + .link {
+  margin-top: 4px;
+}
+
 /* No room beside the poster: the column goes under it, wall text first,
    and the print peeks out to the right instead of the top. */
 .work.below {
@@ -399,7 +505,9 @@ body.editing .caption {
   .note,
   .print.out .note,
   .paper img,
-  .print.out .paper img {
+  .print.out .paper img,
+  .caption .label,
+  .print.away {
     transition: none;
   }
 

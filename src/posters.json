@@ -1,0 +1,74 @@
+{
+  "cup-violet-dark": {
+    "image": "/posters/cup-violet-dark.svg",
+    "placeholder": true
+  },
+  "cup-pink": {
+    "image": "/posters/cup-pink.svg",
+    "placeholder": true
+  },
+  "e-spiral": {
+    "image": "/posters/e-spiral.svg",
+    "placeholder": true
+  },
+  "e-middle": {
+    "image": "/posters/e-middle.svg",
+    "placeholder": true
+  },
+  "white-dark-roll": {
+    "image": "/posters/white-dark-roll.svg",
+    "placeholder": true
+  },
+  "yellow-sheet": {
+    "image": "/posters/yellow-sheet.svg",
+    "placeholder": true
+  },
+  "violet-beige-panel": {
+    "image": "/posters/violet-beige-panel.svg",
+    "placeholder": true
+  },
+  "n-dark": {
+    "image": "/posters/n-dark.svg",
+    "placeholder": true
+  },
+  "n-wrap": {
+    "image": "/posters/n-wrap.svg",
+    "placeholder": true
+  },
+  "eintritt": {
+    "image": "/posters/eintritt.svg",
+    "placeholder": true
+  },
+  "violet-pink-yellow": {
+    "image": "/posters/violet-pink-yellow.svg",
+    "placeholder": true
+  },
+  "dark-beige": {
+    "image": "/posters/dark-beige.svg",
+    "placeholder": true
+  },
+  "crescent-lavender": {
+    "image": "/posters/crescent-lavender.svg",
+    "placeholder": true
+  },
+  "z": {
+    "image": "/posters/z.svg",
+    "placeholder": true
+  },
+  "purple-beige": {
+    "image": "/posters/purple-beige.svg",
+    "placeholder": true
+  },
+  "plakatsammlung": {
+    "image": "/posters/plakatsammlung.svg",
+    "placeholder": true
+  },
+  "green-lavender-dark": {
+    "image": "/posters/green-lavender-dark.svg",
+    "placeholder": true
+  },
+  "white-roll": {
+    "image": "/posters/white-roll.svg",
+    "placeholder": true
+  }
+}

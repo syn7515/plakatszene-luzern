@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 895 1280" width="895" height="1280">
+<defs><pattern id="d" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="11" cy="11" r="6.1" fill="#007c8c"/></pattern></defs>
+<rect width="895" height="1280" fill="#ff4a2a"/>
+<rect x="89" y="280" width="120" height="700" rx="60" fill="#ffffff"/><rect x="232" y="540" width="120" height="440" rx="60" fill="url(#d)"/><rect x="397" y="615" width="120" height="365" rx="60" fill="#ffffff"/><rect x="556" y="570" width="120" height="410" rx="60" fill="url(#d)"/><rect x="717" y="560" width="120" height="420" rx="60" fill="#ffffff"/>
+<g font-family='"Helvetica Neue", Helvetica, Arial, sans-serif' fill="#ffffff">
+<text x="48" y="96" font-size="44" font-weight="500">Poster 015</text>
+<text x="48" y="146" font-size="44">Mia Hauser</text>
+<text x="847" y="96" font-size="24" text-anchor="end" opacity="0.7">Placeholder</text>
+<text x="40" y="1230" font-size="300" font-weight="500" letter-spacing="-12" fill="#ffffff">015</text>
+</g>
+</svg>
