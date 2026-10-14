@@ -18,6 +18,7 @@
 :root {
   --face: "ABC Areal", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --backdrop: #e6e6e6;
+  --poster-ratio: 0.69921875; /* F4, 89.5 / 128: stage.ts sets it again from POSTER_SIZE, but the page is laid out before the script runs */
   --gutter: 24px;
   --panel: 0px; /* room kept free for the editor panel */
   --gap: 28px; /* between the poster and its label */
@@ -63,7 +64,7 @@ main {
   padding-right: calc(var(--gutter) + var(--panel));
 }
 
-/* The poster and its label. --poster-ratio is set from POSTER_SIZE in stage.ts */
+/* The poster and its label. */
 .work {
   position: relative;
   width: min(100%, calc((100dvh - 2 * var(--gutter)) * var(--poster-ratio)));
@@ -81,6 +82,57 @@ main {
   width: 100%;
   height: 100%;
   touch-action: none;
+}
+
+/* --- Before the poster is drawn ----------------------------------------------
+   While the script arrives and the scene is built, the poster's place holds a
+   blank sheet, a shade off the paper, with a slow sheen passing over it, and
+   nothing else of the page shows (the label comes later anyway). main.ts marks
+   the frame placed once the label has decided where the poster stands, so the
+   sheet never jumps, and drawn once the first frame is on the canvas: the
+   sheet then fades off it, and the paper lightens as the sheets start to grow.
+   The sheen is one strip three sheets wide, moved by transform, so it keeps
+   going while building the scene holds up the page. */
+
+.poster-frame {
+  overflow: hidden; /* the sheen's strip */
+}
+
+.poster-frame::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -100%;
+  width: 300%;
+  background: linear-gradient(100deg, #f0f0f0 42%, #fafafa 50%, #f0f0f0 58%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+  animation: sheen 2.4s var(--ease) infinite;
+}
+
+/* Across in the first part, then a pause with the sheen off the sheet. */
+@keyframes sheen {
+  from {
+    transform: translateX(-33.34%);
+  }
+  65%,
+  to {
+    transform: translateX(33.34%);
+  }
+}
+
+.poster-frame.placed::after {
+  opacity: 1;
+}
+
+.poster-frame.drawn::after {
+  display: none;
+  opacity: 0;
+  transition:
+    opacity 0.5s var(--ease),
+    display 0.5s allow-discrete;
 }
 
 /* Editor only: the original, laid over the canvas for tracing. */
@@ -142,6 +194,12 @@ body.editing .caption {
   font-weight: 500;
 }
 
+/* The wall text, a step up from the label's type. */
+.caption .about {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
 /* The wall text and the heading stand on the card's text line. */
 .caption .about,
 .caption .kind {
@@ -188,15 +246,18 @@ body.editing .caption {
   color: #fff;
 }
 
-/* The print, tucked behind the card, tilted by --tuck; caption.ts brings
-   it out and back by animating its transform. .paper is the photo print
-   itself, border included. */
+/* The print, tucked behind the card, tilted by --tuck and made smaller by
+   --small (about its centre); caption.ts brings it out and back by animating
+   its transform. Its box is the size it is scaled from when it comes out, so
+   only the tucked print is smaller. .paper is the photo print itself, border
+   included. */
 .print {
   --tuck: -5deg;
-  --overhang: 31px; /* how far past the label's right edge it reaches: 22px plus what the turn adds */
+  --small: 0.8;
+  --overhang: 22px; /* how far past the label's right edge it reaches, turned and made smaller */
   position: absolute;
   z-index: 1;
-  right: -22px;
+  right: -30px;
   top: -58px;
   width: 150px;
   aspect-ratio: 3 / 4;
@@ -210,7 +271,7 @@ body.editing .caption {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transform: rotate(var(--tuck));
+  transform: rotate(var(--tuck)) scale(var(--small));
   will-change: transform;
 }
 
@@ -236,6 +297,15 @@ body.editing .caption {
   height: auto; /* not the markup's height attribute */
   aspect-ratio: 3 / 4;
   object-fit: cover;
+  filter: grayscale(1);
+  transition: filter 0.42s var(--ease); /* caption.ts's BACK */
+}
+
+/* Tucked, the photo is black and white beside the poster's two inks; its
+   colour comes up as it comes out (as long as caption.ts's OUT). */
+.print.out .paper img {
+  filter: none;
+  transition-duration: 0.52s;
 }
 
 /* Where and when the photo was taken, written in the print's lower margin,
@@ -296,7 +366,7 @@ body.editing .caption {
   left: auto;
   width: 100%;
   margin-top: 32px;
-  gap: 40px; /* the tucked print reaches about 31px above the label */
+  gap: 40px; /* the tucked print reaches a little above the label */
 }
 
 .work.below .about {
@@ -323,7 +393,14 @@ body.editing .caption {
 @media (prefers-reduced-motion: reduce) {
   .caption,
   .note,
-  .print.out .note {
+  .print.out .note,
+  .paper img,
+  .print.out .paper img {
     transition: none;
+  }
+
+  /* The blank sheet stays still. */
+  .poster-frame::after {
+    animation: none;
   }
 }
