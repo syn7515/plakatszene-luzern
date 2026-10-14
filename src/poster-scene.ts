@@ -6,7 +6,7 @@ import { POSTER_SIZE } from './poster.ts';
 import { Sheet, type SheetSpec } from './sheet.ts';
 import type { Stage } from './stage.ts';
 import type { Guide } from './strip-geometry.ts';
-import { wayOut } from './way-out.ts';
+import { wayOut, type Exit } from './way-out.ts';
 
 const MIN_DOT_PX = 3; // CSS px; finer than this and the dots blur into a flat tint
 
@@ -439,17 +439,18 @@ export class PosterScene {
   }
 
   // Call a sheet out: it slides lengthwise along its own path, the end
-  // nearer a way out first, and on along a smooth way out through the left or
-  // right edge of the frame that keeps clear of every other sheet (see
-  // way-out.ts), so the end that goes last passes through every bend the
-  // paper made. Resolves with the side it left by (-1 left, 1 right) once it
-  // is out of the frame. Sheets that lean on it stay as they were. It stays
-  // out until put back.
-  callOut(sheet: Sheet): Promise<1 | -1> {
+  // nearer a way out first, and on along a smooth way out of the frame, by
+  // the left or right edge or back and up out of the top, clear of every other
+  // sheet and, where it can be, never seen over one (see way-out.ts), so the
+  // end that goes last passes through every bend the paper made. Resolves with
+  // the edge it left by once it is out of the frame. Sheets that lean on it
+  // stay as they were. It stays out until put back.
+  callOut(sheet: Sheet): Promise<Exit> {
     this.putBack(sheet);
     const stood = sheet.guide();
     const others = this.sheets.filter((s) => s !== sheet).map((s) => s.guide());
-    const { rail, travel, side } = wayOut(stood, others, POSTER_SIZE.width / 2, sheet.geometry.stationLength);
+    const frame = { halfWidth: POSTER_SIZE.width / 2, halfHeight: POSTER_SIZE.height / 2, elevation: this.composition.view.elevation };
+    const { rail, travel, exit } = wayOut(stood, others, frame, sheet.geometry.stationLength, sheet.spec.exit);
     // Into the sheet's own space (a follower's is the world's).
     sheet.mesh.updateMatrixWorld();
     const toSheet = sheet.mesh.matrixWorld.clone().invert();
@@ -462,7 +463,7 @@ export class PosterScene {
     sheet.geometry.ride(rail);
     const duration = THREE.MathUtils.clamp(travel / OUT_SPEED, ...OUT_TIME);
     return new Promise((resolve) => {
-      this.calledOut.set(sheet, { travel, time: 0, duration, stood, gone: () => resolve(side) });
+      this.calledOut.set(sheet, { travel, time: 0, duration, stood, gone: () => resolve(exit) });
     });
   }
 

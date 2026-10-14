@@ -29,6 +29,9 @@ export interface SheetSpec {
   droop?: Droop;
   // What the sheet says about itself when pointed at.
   label?: Label;
+  // Which way it leaves the frame when called out (see way-out.ts); worked
+  // out from the sheets around it when not given.
+  exit?: 'left' | 'right' | 'top';
 }
 
 // A title and a name printed on the paper, shown on hover. Where it goes the

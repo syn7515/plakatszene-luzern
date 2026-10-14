@@ -255,7 +255,8 @@
         ]
       },
       "faces": ["green", "paper", "lavender", "darkGreen", "violet", "green"],
-      "label": { "title": "Poster 014", "name": "Jan Schärer" }
+      "label": { "title": "Poster 014", "name": "Jan Schärer" },
+      "exit": "top"
     },
     {
       "id": "purple-beige",
