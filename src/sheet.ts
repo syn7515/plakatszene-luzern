@@ -32,6 +32,10 @@ export interface SheetSpec {
   // Which way it leaves the frame when called out (see way-out.ts); worked
   // out from the sheets around it when not given.
   exit?: 'left' | 'right' | 'top' | 'bottom';
+  // A way out drawn by hand: points in plan, cm ([x across, z towards the
+  // viewer]), from the end nearer the first; taken through as one rounded
+  // line instead of a way worked out. Comes before `exit`.
+  way?: [number, number][];
 }
 
 // A title and a name printed on the paper, shown on hover. Where it goes the

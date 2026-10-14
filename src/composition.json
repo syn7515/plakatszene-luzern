@@ -21,7 +21,8 @@
       "faces": ["green", "violet", "darkGreen", "violet", "green", "violet"],
       "follow": { "sheet": "cup-pink", "side": "front", "from": 0, "gap": 3.2, "stiffness": 0, "restTurn": 2, "tension": 0 },
       "pull": { "from": 4.7, "to": 0, "topLag": 0.3 },
-      "label": { "title": "Poster 001", "name": "Lea Brunner" }
+      "label": { "title": "Poster 001", "name": "Lea Brunner" },
+      "way": [[36.2, -125.7], [39.8, -130.9], [43.5, -136], [46.3, -139.4]]
     },
     {
       "id": "cup-pink",
@@ -37,7 +38,8 @@
       },
       "faces": ["pink", "yellow", "green", "yellow", "pink", "yellow"],
       "pull": { "from": 41, "to": 70.5, "topLag": 0.3 },
-      "label": { "title": "Poster 002", "name": "Nico Fässler" }
+      "label": { "title": "Poster 002", "name": "Nico Fässler" },
+      "way": [[39.8, -125.8], [42.7, -130.1], [45.6, -134.3]]
     },
     {
       "id": "e-spiral",
@@ -106,7 +108,7 @@
       "grounded": true,
       "pull": { "from": 44.5, "to": 56.5, "topLag": 0.3 },
       "label": { "title": "Poster 006", "name": "Till Hofer" },
-      "exit": "bottom"
+      "way": [[-25, 50.4], [-31.5, 57.2], [-38, 64], [-42.3, 70], [-45.2, 75.1]]
     },
     {
       "id": "violet-beige-panel",
@@ -122,7 +124,8 @@
         ]
       },
       "faces": ["violet", "beige", "violet", "beige", "violet", "beige"],
-      "label": { "title": "Poster 007", "name": "Nora Gisler" }
+      "label": { "title": "Poster 007", "name": "Nora Gisler" },
+      "way": [[6.6, -0.7], [1.5, -2.5], [-5.7, -4.7], [-12.2, -4.2], [-20.1, -3.3], [-27.4, -1.6], [-36, -0.7], [-41.1, 1], [-46.9, 4.9], [-53.3, 9.5]]
     },
     {
       "id": "n-dark",
@@ -161,7 +164,8 @@
       "faces": ["violet", "beige", "lavender", "beige", "lavender", "beige"],
       "grounded": true,
       "droop": { "turn": -35, "reach": 14 },
-      "label": { "title": "Poster 009", "name": "Ida Rüegg" }
+      "label": { "title": "Poster 009", "name": "Ida Rüegg" },
+      "way": [[37.7, 46.7], [41.3, 50.1], [44.9, 54.4], [48.1, 57.8]]
     },
     {
       "id": "eintritt",
@@ -199,7 +203,8 @@
         ]
       },
       "faces": ["violet", "pink", "yellow", "pink", "yellow", "pink"],
-      "label": { "title": "Poster 011", "name": "Anouk Berger" }
+      "label": { "title": "Poster 011", "name": "Anouk Berger" },
+      "way": [[-14.9, -53.3], [-10.6, -57.6], [-6.3, -62.7], [-2.7, -68.7], [0.9, -79.8], [3.8, -90], [5.6, -96], [7.1, -104.5], [8.9, -111.4], [10.7, -117.3]]
     },
     {
       "id": "dark-beige",
@@ -326,7 +331,8 @@
       },
       "faces": ["green", "lavender", "darkGreen", "paper", "darkGreen", "paper"],
       "pull": { "from": 57.68, "to": 88.25, "topLag": 0.3 },
-      "label": { "title": "Poster 017", "name": "Vera Meier" }
+      "label": { "title": "Poster 017", "name": "Vera Meier" },
+      "way": [[-28.7, 29.7], [-33.8, 38.3], [-38.8, 45.1], [-43.1, 51.1], [-47.5, 57.1]]
     },
     {
       "id": "white-roll",
