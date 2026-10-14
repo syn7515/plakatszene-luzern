@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "node scripts/fonts.mjs && tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "og": "node scripts/og.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
