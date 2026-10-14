@@ -235,20 +235,19 @@ body.editing .caption {
   margin-bottom: 6px;
 }
 
+/* Where the full credits are: a plain link, not a call to action, so
+   underlined at the text's weight rather than a button. */
 .caption .link {
   display: inline-block;
-  margin-top: 12px;
-  padding: 5px 9px 4px;
-  border: 1px solid currentColor;
-  border-radius: 999px;
+  margin-top: 10px;
   color: inherit;
-  font-weight: 500;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .caption .link:hover {
-  background: #161616;
-  color: #fff;
+  color: #7a7a7a;
 }
 
 /* The print, tucked behind the card, tilted by --tuck and made smaller by
