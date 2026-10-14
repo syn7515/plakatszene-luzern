@@ -12,14 +12,19 @@ const SIZE = { width: 1200, height: 630 }; // CSS px; index.html agrees
 const CALLED = 'violet-pink-yellow'; // 011
 // Pinned on its teal top, where the paper shows it whole. Printed this much
 // larger than on the page, so the name still reads in a chat app's preview.
-const LABEL = { title: 'Roll Call', name: '', at: 2.5, y: 46.8 };
+const LABEL = { title: 'Roll Call', name: '', at: 2.5, y: 47.8, side: 'front' as const };
 const LABEL_SCALE = 1.4;
 // The card's window onto the poster: its centre and width, cm in the camera's plane.
-const WINDOW = { x: -5, y: 43.5, width: 62 };
-// On the card only, the sheets around 011 come down (cm tall; the bottom
-// edge stays) to let more of it show: 012 wraps its back, 013 stands at
-// the far left, 001 at the top right.
-const HEIGHTS: Record<string, number> = { 'dark-beige': 31.5, 'crescent-lavender': 36, 'cup-violet-dark': 11.5 };
+const WINDOW = { x: -5, y: 48.5, width: 62 };
+// On the card only, sheets are set this tall (cm; the bottom edge stays) to
+// let more of 011 show: it rises a little, and the sheets around it come
+// down: 012 wraps its back, 013 stands at the far left, 001 at the top right.
+const HEIGHTS: Record<string, number> = {
+  'violet-pink-yellow': 54,
+  'dark-beige': 31.5,
+  'crescent-lavender': 36,
+  'cup-violet-dark': 11.5,
+};
 
 await labelFontLoaded();
 const canvas = document.querySelector('canvas')!;
