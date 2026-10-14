@@ -40,9 +40,14 @@ function compositionWriter(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command, isPreview }) => ({
+  // Built (and previewed), the site lives at suepark.xyz/experiments/1/: the
+  // portfolio there passes that path on to this project's own deployment
+  // (see README). The dev server stays at the root.
+  base: command === 'build' || isPreview ? '/experiments/1/' : '/',
   plugins: [compositionWriter()],
   // The port the launcher hands out (PORT), so a worktree's server can run
   // beside the main checkout's; Vite's own default otherwise.
   server: { port: Number(process.env.PORT) || undefined },
-});
+  preview: { port: Number(process.env.PORT) || undefined },
+}));

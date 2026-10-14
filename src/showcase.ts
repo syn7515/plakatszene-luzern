@@ -20,6 +20,7 @@
 import type { Caption } from './caption.ts';
 import type { PosterScene } from './poster-scene.ts';
 import posters from './posters.json';
+import { publicPath } from './public-path.ts';
 import type { Sheet } from './sheet.ts';
 
 interface Entry {
@@ -123,7 +124,7 @@ export function mountShowcase(
   }
 
   function load(entry: Entry) {
-    img.src = entry.image;
+    img.src = publicPath(entry.image);
     return img.decode().catch(() => {});
   }
 
@@ -157,7 +158,7 @@ export function mountShowcase(
     if (!open) return;
     open.at = (open.at + by + roll.length) % roll.length;
     const sheet = roll[open.at];
-    const { image } = entryOf(sheet)!;
+    const image = publicPath(entryOf(sheet)!.image);
     const next = new Image();
     next.src = image;
     await next.decode().catch(() => {});
@@ -172,7 +173,7 @@ export function mountShowcase(
   function warm() {
     if (!open) return;
     for (const by of [-1, 1]) {
-      const { image } = entryOf(roll[(open.at + by + roll.length) % roll.length])!;
+      const image = publicPath(entryOf(roll[(open.at + by + roll.length) % roll.length])!.image);
       if (warmed.has(image)) continue;
       const ahead = new Image();
       ahead.src = image;
