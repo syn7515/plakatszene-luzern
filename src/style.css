@@ -19,6 +19,12 @@ body {
   background: var(--backdrop);
 }
 
+/* Every line of text on the wall breaks the way a typesetter would:
+   no orphaned last words. */
+body {
+  text-wrap: pretty;
+}
+
 /* Nothing here ever needs to scroll sideways, and a stray pixel of
    horizontal overflow would raise a scrollbar that shifts the whole wall. */
 html {
