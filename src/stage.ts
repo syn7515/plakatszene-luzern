@@ -5,7 +5,7 @@ import { PAPER, POSTER_SIZE } from './poster.ts';
 // orthographic frustum maps 1:1 onto the sheet and anything past the edge
 // is trimmed like the printed crop.
 export function createStage(canvas: HTMLCanvasElement) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true }); // stencil: see PosterScene.passBehind
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(PAPER);
 

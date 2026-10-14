@@ -19,8 +19,10 @@ import type { Guide, Rail } from './strip-geometry.ts';
 // instead, pulled taut and rounded off, a route that winds if it must.
 //
 // A way may also be drawn by hand (a sheet's `way`): from the end nearer its
-// first point, through its points as one rounded line, and on in its last
-// direction until out of the frame.
+// first point, as one curve rounding the drawing off (or a few meeting
+// smoothly, where one would touch other paper), and on in its last direction
+// until out of the frame. A sheet may also be told which end goes first (its
+// `lead`).
 //
 // The poster is flat and has no shadows, so paper seen sliding in front of
 // other paper reads as passing through it, while paper sliding behind other
@@ -46,7 +48,11 @@ import type { Guide, Rail } from './strip-geometry.ts';
 const CLEAR = 2; // cm the way out keeps from other paper, and from its own away from the end
 const OWN_NEAR = 6; // cm of its own paper next to the end that the way out may run close to
 const LEAD_IN = 3; // cm the way out first carries on in the end's own direction
-const TURN_IN = 12; // cm more it carries on before a drawn way turning square from it
+const SPLIT_FROM = 8; // cm from the end within which a drawn way is not split, so it turns off the paper's own direction roundly
+const TIGHTEST = 0.4; // radians a cm a drawn way split to clear paper may turn at most (or as much as unsplit), else it stays whole
+const REACH_SHARES = [0.12, 0.2, 0.3, 0.4, 0.5, 0.65, 0.8, 1, 1.3]; // of a drawn way's span, tried for its curve's two reaches
+const WAVER = 80; // cm a drawn way's curve may run further from the drawing to save a radian of turning back
+const TIGHT = 150; // cm it may run further to turn a radian a cm less tightly at its tightest
 const PAST = 4; // cm past the frame's edge where the way out straightens
 const CELL = 1; // cm, the grid the way is found on
 const BASE = 0.4; // cost of a cm travelled, seen or not
@@ -71,6 +77,14 @@ export interface Frame {
   halfWidth: number;
   halfHeight: number;
   elevation: number;
+}
+
+// What a sheet may be told about its way out (see SheetSpec): which way to
+// leave, a way drawn by hand, which end goes first.
+export interface Told {
+  exit?: Exit;
+  way?: Point[];
+  lead?: Rail['lead'];
 }
 
 // Paper in plan, filed by cell, so the paper near a point is quick to find.
@@ -168,39 +182,12 @@ function round(line: Point[], passes: number) {
   return points;
 }
 
-// A rounded line through the points (centripetal Catmull-Rom), a point
-// about every cm.
-function spline(points: Point[]): Point[] {
-  const at = (i: number): Point =>
-    i < 0
-      ? [2 * points[0][0] - points[1][0], 2 * points[0][1] - points[1][1]]
-      : i >= points.length
-        ? [2 * points[points.length - 1][0] - points[points.length - 2][0], 2 * points[points.length - 1][1] - points[points.length - 2][1]]
-        : points[i];
-  const knot = (a: Point, b: Point) => Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])) || 1e-4;
-  const mix = (a: Point, b: Point, ta: number, tb: number, t: number): Point => {
-    const [u, v] = [(tb - t) / (tb - ta), (t - ta) / (tb - ta)];
-    return [u * a[0] + v * b[0], u * a[1] + v * b[1]];
-  };
-  const line: Point[] = [points[0]];
-  for (let i = 0; i < points.length - 1; i++) {
-    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
-    const t1 = knot(p0, p1);
-    const t2 = t1 + knot(p1, p2);
-    const t3 = t2 + knot(p2, p3);
-    const steps = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1])));
-    for (let k = 1; k <= steps; k++) {
-      const t = t1 + ((t2 - t1) * k) / steps;
-      const a1 = mix(p0, p1, 0, t1, t);
-      const a2 = mix(p1, p2, t1, t2, t);
-      const a3 = mix(p2, p3, t2, t3, t);
-      const b1 = mix(a1, a2, 0, t2, t);
-      const b2 = mix(a2, a3, t1, t3, t);
-      line.push(mix(b1, b2, t1, t2, t));
-    }
-  }
-  return line;
-}
+// A point a share t along a cubic Bézier.
+const bezier = (p: Point[], t: number): Point => {
+  const u = 1 - t;
+  const [a, b, c, d] = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+  return [a * p[0][0] + b * p[1][0] + c * p[2][0] + d * p[3][0], a * p[0][1] + b * p[1][1] + c * p[2][1] + d * p[3][1]];
+};
 
 function turningOf(line: Point[]) {
   let turning = 0;
@@ -212,7 +199,8 @@ function turningOf(line: Point[]) {
   return turning;
 }
 
-export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, only?: Exit, drawn?: Point[]) {
+export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, told: Told = {}) {
+  const { exit: only, way: drawn, lead: leading } = told;
   const n = own.bottom.length / 3 - 1;
   const half = frame.halfWidth;
   const look = (frame.elevation * Math.PI) / 180;
@@ -286,27 +274,97 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
   type Option = { cost: number; lead: Rail['lead']; exit: Exit; line: Point[] };
   let best: Option | null = null;
 
-  // Drawn by hand: from the end nearer its first point, in its own direction
-  // and through the points as one rounded line, then on the way it last went
-  // until out of the frame.
+  // Drawn by hand: from the end nearer its first point (or the end it is told
+  // to lead with), leaving in its own direction, as one curve to the
+  // drawing's last point, arriving the way the drawing last went, then on
+  // that way until out of the frame. The curve rounds the drawing off instead
+  // of following every wobble of the hand: of cubics with a range of reaches,
+  // the one that runs closest to the drawn points wins, but a cubic that
+  // bends first one way and then the other (WAVER) or turns tightly anywhere
+  // (TIGHT) pays for it, so it turns one way, roundly, even where the end
+  // points elsewhere than the drawing. Only where that curve would touch
+  // other paper is it split, at the drawn point it strays furthest from, into
+  // two that meet there going the way the drawing goes there, and so on: a
+  // drawing that threads a gap is followed through it.
   if (drawn && drawn.length > 0) {
     const [x0, z0] = drawn[0];
     const [tip, anchor] = [at(own.bottom, n), at(own.bottom, 0)];
-    const lead = Math.hypot(x0 - tip[0], z0 - tip[1]) <= Math.hypot(x0 - anchor[0], z0 - anchor[1]) ? 'tip' : 'anchor';
-    const { ex, ez, tx, tz, out } = endOf(lead);
-    // The sharper the turn from the end's own direction onto the drawing,
-    // the longer the paper carries on first, so it bends round, not over.
-    const from = drawn.find(([x, z]) => Math.hypot(x - ex, z - ez) >= 4) ?? drawn[drawn.length - 1];
-    const turn = Math.abs(Math.atan2(tx * (from[1] - ez) - tz * (from[0] - ex), tx * (from[0] - ex) + tz * (from[1] - ez)));
-    const lead_in = LEAD_IN + TURN_IN * Math.min(1, turn / (Math.PI / 2));
-    const onward = drawn.filter(([x, z]) => Math.hypot(x - ex, z - ez) >= lead_in + LEAD_IN);
-    const line = spline([[ex, ez], [ex + tx * lead_in, ez + tz * lead_in], ...(onward.length ? onward : drawn.slice(-1))]);
+    const lead =
+      leading ?? (Math.hypot(x0 - tip[0], z0 - tip[1]) <= Math.hypot(x0 - anchor[0], z0 - anchor[1]) ? 'tip' : 'anchor');
+    const { end, ex, ez, tx, tz, out } = endOf(lead);
+    const near = Math.round(OWN_NEAR / ds);
+    const skip = (tag: number) => tag >= 0 && Math.abs(tag - end) <= near;
+    const touches = (curve: Point[]) =>
+      curve.some(([x, z]) => Math.hypot(x - ex, z - ez) > LEAD_IN && plan.nearest(x, z, CLEAR, skip) < CLEAR);
+    const towards = (p: Point, q: Point): Point => {
+      const l = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+      return [(q[0] - p[0]) / l, (q[1] - p[1]) / l];
+    };
+    // One cubic from a, leaving along ta, to b, arriving along tb, rounding
+    // off the drawn points on the way; and how far it runs from each.
+    const fit = (a: Point, ta: Point, b: Point, tb: Point, points: Point[]) => {
+      const chord = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      let [line, misses, error] = [[] as Point[], [] as number[], Infinity];
+      for (const ra of REACH_SHARES) {
+        for (const rb of REACH_SHARES) {
+          const control: Point[] = [
+            a,
+            [a[0] + ta[0] * ra * chord, a[1] + ta[1] * ra * chord],
+            [b[0] - tb[0] * rb * chord, b[1] - tb[1] * rb * chord],
+            b,
+          ];
+          const samples = Math.max(2, Math.ceil(chord * 1.5));
+          const curve: Point[] = [];
+          for (let i = 0; i <= samples; i++) curve.push(bezier(control, i / samples));
+          const away = points.map(([x, z]) => Math.min(...curve.map(([cx, cz]) => Math.hypot(cx - x, cz - z))));
+          // How it turns: in all, all told one way, and at its tightest.
+          let [all, net, tightest] = [0, 0, 0];
+          for (let i = 2; i < curve.length; i++) {
+            const h0 = Math.atan2(curve[i - 1][1] - curve[i - 2][1], curve[i - 1][0] - curve[i - 2][0]);
+            const h1 = Math.atan2(curve[i][1] - curve[i - 1][1], curve[i][0] - curve[i - 1][0]);
+            const turn = Math.atan2(Math.sin(h1 - h0), Math.cos(h1 - h0));
+            const length = Math.hypot(curve[i][0] - curve[i - 1][0], curve[i][1] - curve[i - 1][1]) || 1e-6;
+            [all, net, tightest] = [all + Math.abs(turn), net + turn, Math.max(tightest, Math.abs(turn) / length)];
+          }
+          const score = Math.max(...away) + WAVER * (all - Math.abs(net)) + TIGHT * tightest;
+          if (score < error) [line, misses, error] = [curve, away, score];
+        }
+      }
+      return { line, misses };
+    };
+    // How tightly a line turns at its tightest, radians a cm.
+    const tightness = (line: Point[]) => {
+      let tightest = 0;
+      for (let i = 2; i < line.length; i++) {
+        const h0 = Math.atan2(line[i - 1][1] - line[i - 2][1], line[i - 1][0] - line[i - 2][0]);
+        const h1 = Math.atan2(line[i][1] - line[i - 1][1], line[i][0] - line[i - 1][0]);
+        const length = Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1]) || 1e-6;
+        tightest = Math.max(tightest, Math.abs(Math.atan2(Math.sin(h1 - h0), Math.cos(h1 - h0))) / length);
+      }
+      return tightest;
+    };
+    // Through the drawn points from a, split where one curve touches paper
+    // (never near the end, where it is still turning off the paper's own way,
+    // and not where the pieces would turn more tightly than TIGHTEST).
+    const follow = (a: Point, ta: Point, points: Point[], tb: Point): Point[] => {
+      const { line, misses } = fit(a, ta, points[points.length - 1], tb, points);
+      if (points.length < 2 || !touches(line)) return line;
+      let k = -1;
+      for (let i = 0; i < points.length - 1; i++) {
+        if (Math.hypot(points[i][0] - ex, points[i][1] - ez) < SPLIT_FROM) continue;
+        if (k < 0 || misses[i] > misses[k]) k = i;
+      }
+      if (k < 0) return line;
+      const tk = towards(k > 0 ? points[k - 1] : a, points[k + 1]);
+      const split = [...follow(a, ta, points.slice(0, k + 1), tk), ...follow(points[k], tk, points.slice(k + 1), tb).slice(1)];
+      return tightness(split) <= Math.max(TIGHTEST, tightness(line)) ? split : line;
+    };
+    const last = drawn[drawn.length - 1];
+    const [dx, dz] = towards(drawn.length > 1 ? drawn[drawn.length - 2] : [ex, ez], last);
+    const line = follow([ex, ez], [tx, tz], drawn, [dx, dz]);
     let at0 = line.findIndex(([x, z]) => out(x, z));
     if (at0 >= 0) line.length = at0 + 1;
-    const [qx, qz] = line[line.length - 2];
     let [lx, lz] = line[line.length - 1];
-    const step = Math.hypot(lx - qx, lz - qz) || 1;
-    const [dx, dz] = [(lx - qx) / step, (lz - qz) / step];
     for (let k = 0; at0 < 0 && k < LONGEST; k++) {
       [lx, lz] = [lx + dx, lz + dz];
       line.push([lx, lz]);
@@ -316,7 +374,7 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
     best = { cost: 0, lead, exit: out(...line[line.length - 2]) ?? 'top', line };
   }
 
-  for (const lead of best ? [] : (['tip', 'anchor'] as const)) {
+  for (const lead of best ? [] : leading ? [leading] : (['tip', 'anchor'] as const)) {
     const { end, ex, ez, tx, tz, yb, yt, out } = endOf(lead);
     const near = Math.round(OWN_NEAR / ds);
     const skip = (tag: number) => tag >= 0 && Math.abs(tag - end) <= near;

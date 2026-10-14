@@ -450,7 +450,7 @@ export class PosterScene {
     const stood = sheet.guide();
     const others = this.sheets.filter((s) => s !== sheet).map((s) => s.guide());
     const frame = { halfWidth: POSTER_SIZE.width / 2, halfHeight: POSTER_SIZE.height / 2, elevation: this.composition.view.elevation };
-    const { rail, travel, exit } = wayOut(stood, others, frame, sheet.geometry.stationLength, sheet.spec.exit, sheet.spec.way);
+    const { rail, travel, exit } = wayOut(stood, others, frame, sheet.geometry.stationLength, sheet.spec);
     // Into the sheet's own space (a follower's is the world's).
     sheet.mesh.updateMatrixWorld();
     const toSheet = sheet.mesh.matrixWorld.clone().invert();
@@ -461,6 +461,7 @@ export class PosterScene {
       }
     }
     sheet.geometry.ride(rail);
+    this.passBehind(sheet);
     const duration = THREE.MathUtils.clamp(travel / OUT_SPEED, ...OUT_TIME);
     return new Promise((resolve) => {
       this.calledOut.set(sheet, { travel, time: 0, duration, stood, gone: () => resolve(exit) });
@@ -473,7 +474,26 @@ export class PosterScene {
     if (!out) return;
     this.calledOut.delete(sheet);
     sheet.geometry.ride(null);
+    this.passBehind(null);
     out.gone();
+  }
+
+  // While a sheet is out, the sheets it is told to pass behind (its spec's
+  // `behind`) show in front of it wherever the frame shows them, as if it went
+  // behind them even where its way out runs through them. Every sheet marks
+  // the stencil where it is the one seen (1 for those, 0 for the rest), and
+  // the sheet that is out is drawn last, only where none of them is seen.
+  private passBehind(sheet: Sheet | null) {
+    const front = new Set(sheet?.spec.behind ?? []);
+    for (const s of this.sheets) {
+      const material = s.mesh.material;
+      const out = s === sheet;
+      material.stencilWrite = front.size > 0;
+      material.stencilRef = out || front.has(s.spec.id) ? 1 : 0;
+      material.stencilFunc = out ? THREE.NotEqualStencilFunc : THREE.AlwaysStencilFunc;
+      material.stencilZPass = out ? THREE.KeepStencilOp : THREE.ReplaceStencilOp;
+      s.mesh.renderOrder = out && front.size > 0 ? 1 : 0;
+    }
   }
 
   private leave(dt: number) {
