@@ -46,6 +46,7 @@ suepark.xyz/experiments/1 에서 보인다. 이 저장소는 그 자체로 Verce
 
 - ABC Areal 폰트 파일은 라이선스상 공개 저장소에 둘 수 없다. 그래서 Vercel Blob에 올려 두고, 빌드가 시작할 때 `scripts/fonts.mjs`가 환경변수 `FONT_ABC_AREAL_REGULAR`, `FONT_ABC_AREAL_MEDIUM`의 URL에서 받아 `public/fonts`에 넣는다(로컬처럼 파일이 이미 있으면 건너뛰고, URL이 없으면 Helvetica로, URL이 틀리면 빌드 실패).
 - 빌드 결과 확인: `npm run build` 뒤 `npm run preview`, http://localhost:4173/experiments/1/
+- 방문 기록: Vercel Web Analytics(`@vercel/analytics`의 `inject`, 빌드에서만). 이 도메인의 `/_vercel/insights`는 포트폴리오 것이라, 스크립트와 기록은 `/experiments/1/_vercel/insights`로 보내 포트폴리오 rewrite를 거쳐 이 프로젝트에 쌓이게 한다 (`main.ts`)
 
 ## 편집기
 
