@@ -393,6 +393,12 @@ body.editing .caption {
   translate: -50% 0;
   clip-path: inset(0 0 100% 0); /* wiped on from the top by showcase.ts */
   cursor: zoom-out;
+  /* A layer of its own for as long as it is there. The wipe would otherwise
+     lift it onto one while it runs and drop it back after, and dropped back
+     it is drawn again: a poster as dense as the dotted placeholders can miss
+     a frame doing so, and blinks. Its size never changes once shown, so it
+     stays sharp (unlike the tucked print, which grows). */
+  will-change: transform;
 }
 
 .shown-poster img {
