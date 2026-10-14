@@ -439,11 +439,18 @@ export class PosterScene {
     // Changed sheets get their labels placed afresh, once they are whole.
     if (!this.intro) this.placeLabels(this.sheets.filter((s) => s.labelStale && s.extent >= 1));
 
-    const pxPerCm = this.stage.resolution.x / POSTER_SIZE.width;
-    const pitch = this.composition.print.dotPitch * pxPerCm;
-    printUniforms.uDotPitch.value = Math.max(pitch, MIN_DOT_PX * this.stage.renderer.getPixelRatio());
-
     this.onUpdate?.();
+  }
+
+  // Draw the poster as it stands. The halftone's dots keep their pitch on
+  // the paper, so in pixels it follows the drawing buffer, which may have
+  // been resized since the last update.
+  render() {
+    const { renderer, scene, camera, resolution } = this.stage;
+    const pxPerCm = resolution.x / POSTER_SIZE.width;
+    const pitch = this.composition.print.dotPitch * pxPerCm;
+    printUniforms.uDotPitch.value = Math.max(pitch, MIN_DOT_PX * renderer.getPixelRatio());
+    renderer.render(scene, camera);
   }
 
   // Put the labels of these sheets where the camera sees them.
