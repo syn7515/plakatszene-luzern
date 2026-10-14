@@ -127,6 +127,19 @@ export class PosterScene {
   private readonly stage: Stage;
   private readonly towardsCamera = new THREE.Vector3();
   private sightTarget: THREE.WebGLRenderTarget | null = null;
+  // The part of a sheet out on its way out, drawn apart to pass behind (see passBehind).
+  private readonly beyond = new Map<Sheet, THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>>();
+  // Under each sheet passed behind, down to the floor, drawn into the stencil only.
+  private readonly skirts = new Map<Sheet, THREE.Mesh<THREE.BufferGeometry>>();
+  private readonly skirtMaterial = new THREE.MeshBasicMaterial({
+    colorWrite: false,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    stencilWrite: true,
+    stencilRef: 1,
+    stencilFunc: THREE.AlwaysStencilFunc,
+    stencilZPass: THREE.ReplaceStencilOp,
+  });
   private sightPixels = new Uint8Array(0);
   private readonly idMaterials: THREE.ShaderMaterial[] = [];
 
@@ -479,20 +492,89 @@ export class PosterScene {
   }
 
   // While a sheet is out, the sheets it is told to pass behind (its spec's
-  // `behind`) show in front of it wherever the frame shows them, as if it went
-  // behind them even where its way out runs through them. Every sheet marks
-  // the stencil where it is the one seen (1 for those, 0 for the rest), and
-  // the sheet that is out is drawn last, only where none of them is seen.
+  // `behind`) show in front of the part of it already out on its way out,
+  // wherever the frame shows them, as if it went behind them even where its
+  // way out runs through them; the rest of it, still on its own path, stands
+  // where it stood, in front of them or not. Every sheet marks the stencil
+  // where it is the one seen (1 for those, 0 for the rest), and the part on
+  // its way out is the same paper drawn again last (splitBeyond), only where
+  // none of them is seen. A sheet that floats would let it be seen under it,
+  // so under each of them, down to the floor, a skirt marks the stencil too.
   private passBehind(sheet: Sheet | null) {
+    for (const [s, part] of this.beyond) {
+      s.mesh.remove(part);
+      // Let go of the buffers it shares with the sheet before disposing of it.
+      part.geometry.setIndex(null);
+      for (const name of Object.keys(part.geometry.attributes)) part.geometry.deleteAttribute(name);
+      part.geometry.dispose();
+      part.material.dispose();
+      s.geometry.setDrawRange(0, Infinity);
+    }
+    this.beyond.clear();
+    for (const skirt of this.skirts.values()) {
+      this.stage.scene.remove(skirt);
+      skirt.geometry.dispose();
+    }
+    this.skirts.clear();
     const front = new Set(sheet?.spec.behind ?? []);
     for (const s of this.sheets) {
       const material = s.mesh.material;
-      const out = s === sheet;
       material.stencilWrite = front.size > 0;
-      material.stencilRef = out || front.has(s.spec.id) ? 1 : 0;
-      material.stencilFunc = out ? THREE.NotEqualStencilFunc : THREE.AlwaysStencilFunc;
-      material.stencilZPass = out ? THREE.KeepStencilOp : THREE.ReplaceStencilOp;
-      s.mesh.renderOrder = out && front.size > 0 ? 1 : 0;
+      material.stencilRef = front.has(s.spec.id) ? 1 : 0;
+      material.stencilFunc = THREE.AlwaysStencilFunc;
+      material.stencilZPass = THREE.ReplaceStencilOp;
+    }
+    if (!sheet || front.size === 0) return;
+    for (const s of this.sheets) {
+      if (!front.has(s.spec.id)) continue;
+      const stations = s.guide().bottom.length / 3;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(stations * 6), 3));
+      const index: number[] = [];
+      for (let i = 0; i < stations - 1; i++) index.push(2 * i, 2 * i + 2, 2 * i + 3, 2 * i, 2 * i + 3, 2 * i + 1);
+      geometry.setIndex(index);
+      const skirt = new THREE.Mesh(geometry, this.skirtMaterial);
+      skirt.renderOrder = 0.5; // after the sheets, so only where it is not hidden
+      skirt.frustumCulled = false;
+      this.stage.scene.add(skirt);
+      this.skirts.set(s, skirt);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setIndex(sheet.geometry.index);
+    for (const [name, attribute] of Object.entries(sheet.geometry.attributes)) geometry.setAttribute(name, attribute);
+    const material = sheet.mesh.material.clone();
+    material.uniforms = sheet.mesh.material.uniforms; // one paper: saturation, label and all
+    material.stencilWrite = true;
+    material.stencilRef = 1;
+    material.stencilFunc = THREE.NotEqualStencilFunc;
+    material.stencilZPass = THREE.KeepStencilOp;
+    const part = new THREE.Mesh(geometry, material);
+    part.renderOrder = 1; // after every other sheet has marked the stencil
+    part.frustumCulled = false; // its bounds move with the paper
+    sheet.mesh.add(part);
+    this.beyond.set(sheet, part);
+    this.splitBeyond();
+  }
+
+  // Each sheet passing behind, cut where its own path ends: the segments
+  // past it, from the leading end, drawn by its part on the way out. And the
+  // skirts under the sheets it passes behind, kept under them as they breathe.
+  private splitBeyond() {
+    for (const [s, skirt] of this.skirts) {
+      const { bottom } = s.guide();
+      const position = skirt.geometry.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < bottom.length / 3; i++) {
+        position.setXYZ(2 * i, bottom[3 * i], bottom[3 * i + 1], bottom[3 * i + 2]);
+        position.setXYZ(2 * i + 1, bottom[3 * i], this.composition.floor, bottom[3 * i + 2]);
+      }
+      position.needsUpdate = true;
+    }
+    for (const [sheet, part] of this.beyond) {
+      const all = sheet.geometry.index!.count / 6;
+      const out = sheet.geometry.segmentsOut;
+      const [kept, gone] = sheet.geometry.rail?.lead === 'tip' ? [[0, all - out], [all - out, out]] : [[out, all - out], [0, out]];
+      sheet.geometry.setDrawRange(6 * kept[0], 6 * kept[1]);
+      part.geometry.setDrawRange(6 * gone[0], 6 * gone[1]);
     }
   }
 
@@ -518,6 +600,7 @@ export class PosterScene {
       sheet.update(dt, this.towardsCamera, guide);
       if (sheet.spring.moving && !this.calledOut.has(sheet)) this.holdBack(sheet, guide);
     }
+    this.splitBeyond();
     // Changed sheets get their labels placed afresh, once they are whole.
     if (!this.intro) this.placeLabels(this.sheets.filter((s) => s.labelStale && s.extent >= 1));
 
@@ -559,7 +642,7 @@ export class PosterScene {
 
     // Only the sheets, each in its id.
     const meshes = new Set<THREE.Object3D>(this.sheets.map((s) => s.mesh));
-    const hidden = scene.children.filter((o) => !meshes.has(o) && o.visible);
+    const hidden = [...scene.children.filter((o) => !meshes.has(o) && o.visible), ...this.beyond.values()];
     for (const o of hidden) o.visible = false;
     const materials = this.sheets.map((s) => s.mesh.material);
     this.sheets.forEach((s, i) => ((s.mesh as THREE.Mesh).material = this.idMaterial(i + 1)));

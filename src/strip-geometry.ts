@@ -215,6 +215,13 @@ export class StripGeometry extends THREE.BufferGeometry {
     return { bottom: this.bottom, top: this.top };
   }
 
+  // On a rail, how many segments, counted from the leading end, have passed
+  // the end of the paper's own path and are out on the way out.
+  get segmentsOut() {
+    if (!this.rail) return 0;
+    return Math.min(SEGMENTS, Math.max(0, Math.round(this.travelled / this.stationLength)));
+  }
+
   get stationLength() {
     return paperLength(this.shape) / SEGMENTS;
   }
