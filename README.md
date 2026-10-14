@@ -40,6 +40,13 @@ npm run dev
 
 편집기는 개발 서버에서 `http://localhost:5173/?edit` 로 열어요. 배포용 빌드에는 들어가지 않아요.
 
+## 배포
+
+suepark.xyz/experiments/1 에서 보인다. 이 저장소는 그 자체로 Vercel 프로젝트(plakatszene-luzern)로 배포되고, 포트폴리오 저장소(portfolio2025)의 `next.config.mjs`가 `/experiments/1` 아래 요청을 그 배포로 넘긴다(rewrite). 그래서 빌드와 미리보기는 base를 `/experiments/1/`로 잡는다(`vite.config.ts`, 개발 서버는 루트 그대로). 스크립트에서만 쓰는 public 파일 경로(포스터 이미지, 큰 원본 사진)는 `src/public-path.ts`로 base를 붙인다.
+
+- ABC Areal 폰트 파일은 라이선스상 공개 저장소에 둘 수 없다. 그래서 Vercel Blob에 올려 두고, 빌드가 시작할 때 `scripts/fonts.mjs`가 환경변수 `FONT_ABC_AREAL_REGULAR`, `FONT_ABC_AREAL_MEDIUM`의 URL에서 받아 `public/fonts`에 넣는다(로컬처럼 파일이 이미 있으면 건너뛰고, URL이 없으면 Helvetica로, URL이 틀리면 빌드 실패).
+- 빌드 결과 확인: `npm run build` 뒤 `npm run preview`, http://localhost:4173/experiments/1/
+
 ## 편집기
 
 - 원본 포스터가 캔버스 위에 반투명하게 겹쳐 보임 (100 Beste Plakate 사이트에서 직접 불러옴, 프로젝트에 저장하지 않음)
@@ -82,7 +89,8 @@ npm run dev
 - `src/posters.json`, `public/posters/` — 종이마다 보여줄 실제 포스터(지금은 자리표시)
 - `src/caption.ts` — 벽 라벨의 자리(옆/아래, 포스터 비켜주기)와 사진 꺼내기·넣기. 글은 `index.html`에
 - `src/editor.ts` — `?edit` 편집기 (개발 전용)
-- `vite.config.ts` — 편집기가 composition.json 을 저장하는 개발 서버 경로
+- `vite.config.ts` — 빌드 base(`/experiments/1/`), 편집기가 composition.json 을 저장하는 개발 서버 경로
+- `scripts/fonts.mjs`, `src/public-path.ts` — 배포용: 폰트 받아오기, base가 붙은 public 경로
 - `src/main.ts` — 시작점
 - `public/photo-seoul-2026.webp`, `public/photo-seoul-2026-small.jpg` — 서울 전시에서 찍은 인쇄본 사진. 작은 것이 꽂혀 있고, 가까이 오면 큰 것을 받아 바꿔 끼운다
 

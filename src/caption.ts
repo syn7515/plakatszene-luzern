@@ -18,6 +18,8 @@
 // beside the card, the print comes up above it instead, or, under the poster,
 // over the poster's foot, centred.
 
+import { publicPath } from './public-path.ts';
+
 const TILT = -2; // degrees, while out
 const CLEAR = 14; // px between the print and the card
 const SLACK = 12; // px around the card and the print within which a pointer keeps it out
@@ -146,7 +148,7 @@ export function mountCaption(work: HTMLElement): Caption {
   // The full-size photo, fetched the first time anyone comes near.
   let upgraded = false;
   function upgrade() {
-    const full = img.dataset.full;
+    const full = img.dataset.full && publicPath(img.dataset.full);
     if (upgraded || !full) return;
     upgraded = true;
     const loader = new Image();
