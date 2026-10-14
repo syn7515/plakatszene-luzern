@@ -410,16 +410,9 @@ body.editing .caption {
 }
 
 /* The label, turned to the poster shown: its own heading (the roll to step
-   through) and card take the place of the original's, and the photo of the
-   original stays tucked away. */
-.caption .label {
-  transition: opacity 0.18s var(--ease); /* showcase.ts's TURN */
-}
-
-.caption .label.turning {
-  opacity: 0;
-}
-
+   through) and card take the place of the original's at once, the white
+   card never leaving the wall, and the photo of the original stays tucked
+   away. */
 .label .called,
 .label.calling .kind:not(.called),
 .label.calling .card:not(.called) {
@@ -437,7 +430,8 @@ body.editing .caption {
 }
 
 .caption .kind .step {
-  padding: 0 4px;
+  position: relative;
+  padding: 0 0 0 6px;
   border: 0;
   background: none;
   font: inherit;
@@ -446,7 +440,26 @@ body.editing .caption {
 }
 
 .caption .kind .step:first-child {
-  padding-left: 0;
+  padding: 0 6px 0 0;
+}
+
+/* The chevrons stay as small as the text, but answer a finger or a pointer
+   anywhere in about 30 × 37px around them, reaching outwards, away from
+   the count between them. */
+.caption .kind .step::before {
+  content: "";
+  position: absolute;
+  inset: -10px -18px -10px -2px;
+}
+
+.caption .kind .step:first-child::before {
+  inset: -10px -2px -10px -18px;
+}
+
+/* Every figure the same width, so the count and the chevron after it hold
+   still as it steps. */
+.caption .kind .count {
+  font-variant-numeric: tabular-nums;
 }
 
 .caption button.link {
@@ -506,7 +519,6 @@ body.editing .caption {
   .print.out .note,
   .paper img,
   .print.out .paper img,
-  .caption .label,
   .print.away {
     transition: none;
   }
