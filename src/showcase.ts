@@ -4,7 +4,7 @@
 // The sheet is called out first: it slides along its own path and out of the
 // frame (PosterScene.callOut). Then a white scrim comes over the poster, the
 // other sheets still faintly there behind it, and the real poster is wiped
-// on over the scrim from the side the sheet left by, a little smaller than
+// on over the scrim from the edge the sheet left by, a little smaller than
 // the frame. The wall label turns to that poster, its heading becoming the
 // roll to step through (‹ 09 / 18 ›, or the arrow keys) with the way back at
 // its other end, both on the wall above the card. Turning to a poster
@@ -108,7 +108,7 @@ export function mountShowcase(
     caption.away(true);
     for (const el of [scrim, shown]) el.getAnimations().forEach((a) => a.cancel());
     const ready = load(entry);
-    scene.callOut(sheet).then(async (side) => {
+    scene.callOut(sheet).then(async (exit) => {
       if (open?.sheet !== sheet) return;
       frame.classList.add('showing');
       warm();
@@ -116,8 +116,8 @@ export function mountShowcase(
       turn(sheet);
       await Promise.all([ready, new Promise((r) => setTimeout(r, ms(WIPE_AFTER)))]);
       if (open?.sheet !== sheet) return;
-      // From the edge it left by: out to the right, the poster comes on from the right.
-      const from = side > 0 ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)';
+      // From the edge it left by: out at the right (or the top), it comes on from there.
+      const from = { right: 'inset(0 0 0 100%)', left: 'inset(0 100% 0 0)', top: 'inset(0 0 100% 0)' }[exit];
       shown.animate([{ clipPath: from }, { clipPath: 'inset(0 0 0 0)' }], { duration: ms(WIPE), easing: EASE, fill: 'forwards' });
     });
     return true;
