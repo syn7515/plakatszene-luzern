@@ -194,6 +194,11 @@ body.editing .caption {
   font-weight: 500;
 }
 
+/* The year beside the title, at the text weight. */
+.caption .year {
+  font-weight: 400;
+}
+
 /* The wall text, a step up from the label's type. */
 .caption .about {
   font-size: 14px;
