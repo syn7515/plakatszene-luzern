@@ -64,7 +64,7 @@
       "grounded": true,
       "curl": 1,
       "shape": {
-        "height": 55.5,
+        "height": 57,
         "bends": [
           { "length": 50, "turn": 0, "follow": true },
           { "length": 10, "turn": 50 }
@@ -81,17 +81,17 @@
       "grounded": true,
       "curl": 0.51,
       "shape": {
-        "height": 34.5,
+        "height": 35,
         "bends": [
           { "length": 45.5, "turn": -160, "bottomTurn": -336 }
         ]
       },
       "faces": ["green", "darkGreen", "green", "darkGreen", "green", "darkGreen"],
-      "label": { "title": "Poster 005", "name": "Elin Ammann", "vertical": false, "at": 11, "y": 28.3, "side": "front" }
+      "label": { "title": "Poster 005", "name": "Elin Ammann", "vertical": false, "at": 12, "y": 29, "side": "front" }
     },
     {
       "id": "yellow-sheet",
-      "position": [0.4, -40, 36],
+      "position": [0.3, -40, 35.9],
       "rotation": [0, 0, 0],
       "curl": 1,
       "shape": {
@@ -129,7 +129,7 @@
       "rotation": [0, -143, 0],
       "curl": 0.44,
       "shape": {
-        "height": 41,
+        "height": 43,
         "bends": [
           { "length": 28, "turn": 0 },
           { "length": 8, "turn": 79.4 },
@@ -139,7 +139,7 @@
       },
       "faces": ["darkGreen", "green", "yellow", "green", "yellow", "green"],
       "grounded": true,
-      "label": { "title": "Poster 008", "name": "Sven Marti", "at": 11.61, "y": 35, "side": "back" }
+      "label": { "title": "Poster 008", "name": "Sven Marti", "at": 2.5, "y": 36.8, "side": "back" }
     },
     {
       "id": "n-wrap",
@@ -212,7 +212,7 @@
       },
       "faces": ["darkGreen", "green", "darkGreen", "beige", "darkGreen", "beige"],
       "follow": { "sheet": "violet-pink-yellow", "side": "back", "from": 0, "gap": 5, "stiffness": 0, "restTurn": 0, "tension": 0.5 },
-      "label": { "title": "Poster 012", "name": "Remo Zbinden", "at": 47.5, "y": 28.3, "side": "back" }
+      "label": { "title": "Poster 012", "name": "Remo Zbinden", "at": 48.5, "y": 28.3, "side": "back" }
     },
     {
       "id": "crescent-lavender",
@@ -233,7 +233,7 @@
         ]
       },
       "faces": ["green", "lavender", "darkGreen", "lavender", "darkGreen", "lavender"],
-      "label": { "title": "Poster 013", "name": "Flurina Bieri" }
+      "label": { "title": "Poster 013", "name": "Flurina Bieri", "at": 49, "y": 25, "side": "front" }
     },
     {
       "id": "z",
