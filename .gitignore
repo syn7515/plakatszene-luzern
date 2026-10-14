@@ -3,3 +3,6 @@ dist
 .DS_Store
 *.local
 .backup-*
+
+# Licensed fonts (Dinamo): their terms forbid putting them in a public repository
+public/fonts/
