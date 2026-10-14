@@ -5,8 +5,8 @@
 // when the margin has room for it, a column as tall as the poster with the
 // wall text at the top and the credits at the bottom like a gallery label.
 // When the margin falls short by a little, the poster gives way to the left
-// by the shortfall; when it has no room at all (portrait), the column goes
-// under the poster.
+// by the shortfall; when it has no room at all (portrait, a phone), the label
+// goes under the poster and the wall text above it, the first thing read.
 //
 // Pointing at the label slides the print out from behind the card: it comes
 // out beside the card, as wide as the label, nearly straight, standing on the
@@ -36,6 +36,7 @@ export function mountCaption(work: HTMLElement): Caption {
   const main = work.parentElement!;
   const frame = work.querySelector<HTMLElement>('.poster-frame')!;
   const caption = work.querySelector<HTMLElement>('.caption')!;
+  const about = caption.querySelector<HTMLElement>('.about')!;
   const label = caption.querySelector<HTMLElement>('.label')!;
   const print = label.querySelector<HTMLButtonElement>('.print')!;
   const img = print.querySelector<HTMLImageElement>('img')!;
@@ -61,6 +62,10 @@ export function mountCaption(work: HTMLElement): Caption {
     const room = inner - frame.offsetWidth; // both margins together
     const under = room < need;
     work.classList.toggle('below', under);
+    if (under !== (about.parentElement === work)) {
+      if (under) work.prepend(about);
+      else caption.prepend(about);
+    }
     document.documentElement.style.setProperty('--shift', `${under ? 0 : Math.max(0, need - room / 2)}px`);
     if (out) go(shown(), 0);
   }
@@ -220,5 +225,10 @@ export function mountCaption(work: HTMLElement): Caption {
   }
 
   layout();
-  return { show: () => caption.classList.add('shown'), away };
+  function show() {
+    caption.classList.add('shown');
+    about.classList.add('shown');
+  }
+
+  return { show, away };
 }
