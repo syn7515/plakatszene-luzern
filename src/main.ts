@@ -3,6 +3,7 @@ import { initialComposition } from './composition.ts';
 import { labelFontLoaded } from './label.ts';
 import { PosterScene } from './poster-scene.ts';
 import { enablePull } from './pull.ts';
+import { mountShowcase, type Showcase } from './showcase.ts';
 import { createStage } from './stage.ts';
 
 // Dev only: open with ?edit to trace the original and arrange sheets.
@@ -25,6 +26,8 @@ await labelFontLoaded();
 const canvas = document.querySelector<HTMLCanvasElement>('#poster')!;
 const stage = createStage(canvas);
 const poster = new PosterScene(stage, initialComposition);
+// A tap on a sheet shows the poster it stands for (not in the editor).
+let showcase: Showcase | null = null;
 const pull = enablePull(
   canvas,
   stage.camera,
@@ -35,7 +38,12 @@ const pull = enablePull(
   (target) => {
     poster.hovered = poster.sheets.find((s) => s === target) ?? null;
   },
+  (target) => {
+    const sheet = poster.sheets.find((s) => s === target);
+    return !!sheet && !!showcase?.open(sheet);
+  },
 );
+if (caption) showcase = mountShowcase(frame, document.querySelector<HTMLElement>('.label')!, caption, poster, pull);
 
 // Dev only: reach the scene from the console.
 if (import.meta.env.DEV) (window as unknown as { __poster: PosterScene }).__poster = poster;

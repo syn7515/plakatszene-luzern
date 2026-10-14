@@ -14,15 +14,17 @@ const MAX_FLING = 6; // curl per second
 const TAP_NUDGE = 4; // curl per second
 
 // Grab a sheet and pull along its length to unroll it; let go and its spring
-// rolls it back up, carrying the speed of the pull. A tap just nudges it.
-// `hover` hears which sheet is under the pointer whenever that changes (the
-// held one, while pulling). Switch it off through the returned `enabled` flag.
+// rolls it back up, carrying the speed of the pull. A tap goes to `tap`,
+// and if that does nothing with it, just nudges the sheet. `hover` hears
+// which sheet is under the pointer whenever that changes (the held one,
+// while pulling). Switch it off through the returned `enabled` flag.
 export function enablePull(
   canvas: HTMLCanvasElement,
   camera: THREE.Camera,
   targets: () => PullTarget[],
   held: (target: PullTarget | null) => void = () => {},
   hover: (target: PullTarget | null) => void = () => {},
+  tap: (target: PullTarget) => boolean = () => false,
 ) {
   const control = { enabled: true };
   const raycaster = new THREE.Raycaster();
@@ -114,7 +116,7 @@ export function enablePull(
     held(null);
 
     if (!moved) {
-      spring.velocity = -TAP_NUDGE;
+      if (e.type !== 'pointerup' || !tap(target)) spring.velocity = -TAP_NUDGE;
     } else {
       // Speed over the last moments of the pull; zero if the hand had stopped.
       const first = history[0];

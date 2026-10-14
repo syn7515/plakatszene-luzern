@@ -27,6 +27,9 @@ const EASE = 'cubic-bezier(0.55, 0, 0.15, 1)'; // the opening's curve
 
 export interface Caption {
   show(): void; // fade the label in, once the sheets have grown in
+  // While the label speaks for a poster called out (showcase.ts), the photo
+  // of the original stays tucked away, out of sight and out of reach.
+  away(on: boolean): void;
 }
 
 export function mountCaption(work: HTMLElement): Caption {
@@ -40,6 +43,7 @@ export function mountCaption(work: HTMLElement): Caption {
   const quick = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const hovers = matchMedia('(hover: hover)').matches;
   let out = false;
+  let aside = false; // put away (see Caption.away)
   let by: 'pointer' | 'focus' | 'tap' | null = null; // what brought it out decides what sends it back
 
   const px = (style: CSSStyleDeclaration, name: string) => parseFloat(style.getPropertyValue(name)) || 0;
@@ -149,7 +153,7 @@ export function mountCaption(work: HTMLElement): Caption {
   }
 
   function pullOut(cause: typeof by) {
-    if (out) return;
+    if (out || aside) return;
     out = true;
     by = cause;
     upgrade();
@@ -207,6 +211,14 @@ export function mountCaption(work: HTMLElement): Caption {
   });
   label.addEventListener('pointerenter', upgrade, { once: true });
 
+  function away(on: boolean) {
+    aside = on;
+    if (on) putBack();
+    print.classList.toggle('away', on);
+    print.tabIndex = on ? -1 : 0;
+    print.toggleAttribute('aria-hidden', on);
+  }
+
   layout();
-  return { show: () => caption.classList.add('shown') };
+  return { show: () => caption.classList.add('shown'), away };
 }

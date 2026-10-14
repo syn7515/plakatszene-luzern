@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 895 1280" width="895" height="1280">
+<defs><pattern id="d" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="11" cy="11" r="7.5" fill="#007c8c"/></pattern></defs>
+<rect width="895" height="1280" fill="#ff4a2a"/>
+<rect x="83" y="317" width="120" height="663" rx="60" fill="#ffffff"/><rect x="234" y="617" width="120" height="363" rx="60" fill="url(#d)"/><rect x="401" y="431" width="120" height="549" rx="60" fill="#ffffff"/><rect x="543" y="324" width="120" height="656" rx="60" fill="url(#d)"/><rect x="724" y="670" width="120" height="310" rx="60" fill="#ffffff"/>
+<g font-family='"Helvetica Neue", Helvetica, Arial, sans-serif' fill="#ffffff">
+<text x="48" y="96" font-size="44" font-weight="500">Poster 003</text>
+<text x="48" y="146" font-size="44">Mara Keller</text>
+<text x="847" y="96" font-size="24" text-anchor="end" opacity="0.7">Placeholder</text>
+<text x="40" y="1230" font-size="300" font-weight="500" letter-spacing="-12" fill="#ffffff">003</text>
+</g>
+</svg>
