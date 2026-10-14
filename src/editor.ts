@@ -263,8 +263,6 @@ export function startEditor(poster: PosterScene, stage: Stage, pull: { enabled: 
   all.add(composition, 'floor', -100, 0, 0.5).name('바닥 높이 (cm)');
   all.add(composition.print, 'dotPitch', 0.2, 2, 0.01).name('망점 간격 (cm)');
   all.add(composition.print, 'dotAngle', 0, 90, 1).name('망점 각도');
-  all.add(composition.print, 'lavender', 0.05, 0.95, 0.01).name('연보라 농도');
-  all.add(composition.print, 'darkGreen', 0.05, 0.95, 0.01).name('짙은 초록 농도');
   all.add(composition.spring, 'stiffness', 20, 400, 1).name('스프링 강성');
   all.add(composition.spring, 'damping', 2, 40, 0.5).name('스프링 감쇠');
   all.onChange(() => {
