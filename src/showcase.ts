@@ -6,11 +6,12 @@
 // other sheets still faintly there behind it, and the real poster is wiped
 // on over the scrim from the side the sheet left by, a little smaller than
 // the frame. The wall label turns to that poster, its heading becoming the
-// roll to step through (‹ 09 / 18 ›, or the arrow keys). Turning to a poster
+// roll to step through (‹ 09 / 18 ›, or the arrow keys) with the way back at
+// its other end, both on the wall above the card. Turning to a poster
 // and back, and stepping, only change what the label says: its white card
-// stays where it is. "Back to the
-// original", Escape or a click on the poster or the scrim fades it all away,
-// the sheet already back in its place underneath.
+// stays where it is; stepping swaps the poster at once, without a fade.
+// "Back to the original", Escape or a click on the poster or the scrim fades
+// it all away, the sheet already back in its place underneath.
 //
 // What each sheet's poster is lives in posters.json, by sheet id: an image,
 // and optionally a year, a link to its full credits, and whether it is only
@@ -33,8 +34,6 @@ const SCRIM_IN = 320; // ms
 const WIPE = 700; // ms, the poster wiped on
 const WIPE_AFTER = 260; // ms after the scrim starts coming
 const FADE_OUT = 450; // ms, closing
-const STEP_OUT = 160; // ms, stepping to the next poster: this one fades
-const STEP_IN = 240; // ms, and that one comes
 const EASE = 'cubic-bezier(0.55, 0, 0.15, 1)'; // the opening's curve
 
 export interface Showcase {
@@ -84,8 +83,16 @@ export function mountShowcase(
   count.className = 'count';
   const kind = document.createElement('p');
   kind.className = 'kind called';
-  kind.append(previous, count, next);
-  const back = button('Back to the original', 'link back');
+  // The way back is on the wall too, at the other end of the heading, as a
+  // return arrow: the card holds only what it says about the poster.
+  const back = button('', 'back', 'Back to the original');
+  back.title = 'Back to the original';
+  back.innerHTML =
+    '<svg viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M4.5 2.5 1.5 5.5l3 3"/><path d="M1.5 5.5h7a3.5 3.5 0 0 1 0 7H6"/></svg>';
+  const steps = document.createElement('span');
+  steps.append(previous, count, next);
+  kind.append(steps, back);
   const card = document.createElement('div');
   card.className = 'card called';
   label.querySelector('.card')!.after(kind, card);
@@ -103,6 +110,7 @@ export function mountShowcase(
     scene.callOut(sheet).then(async (side) => {
       if (open?.sheet !== sheet) return;
       frame.classList.add('showing');
+      warm();
       scrim.animate([{ opacity: 0 }, { opacity: SCRIM }], { duration: ms(SCRIM_IN), easing: 'ease-out', fill: 'forwards' });
       turn(sheet);
       await Promise.all([ready, new Promise((r) => setTimeout(r, ms(WIPE_AFTER)))]);
@@ -143,17 +151,34 @@ export function mountShowcase(
     pull.enabled = true;
   }
 
-  // The next or previous poster of the roll, in the frame as it is.
+  // The next or previous poster of the roll, at once, without a fade: its
+  // image is decoded first, then it and the label change together.
   async function step(by: number) {
     if (!open) return;
     open.at = (open.at + by + roll.length) % roll.length;
     const sheet = roll[open.at];
+    const { image } = entryOf(sheet)!;
+    const next = new Image();
+    next.src = image;
+    await next.decode().catch(() => {});
+    if (roll[open?.at ?? -1] !== sheet) return;
+    img.src = image;
     fill(sheet);
-    await shown.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms(STEP_OUT), fill: 'forwards' }).finished;
-    if (roll[open?.at ?? -1] !== sheet) return;
-    await load(entryOf(sheet)!);
-    if (roll[open?.at ?? -1] !== sheet) return;
-    shown.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms(STEP_IN), fill: 'forwards' });
+    warm();
+  }
+
+  // The posters either side, fetched and decoded ahead, so a step lands at once.
+  const warmed = new Map<string, HTMLImageElement>();
+  function warm() {
+    if (!open) return;
+    for (const by of [-1, 1]) {
+      const { image } = entryOf(roll[(open.at + by + roll.length) % roll.length])!;
+      if (warmed.has(image)) continue;
+      const ahead = new Image();
+      ahead.src = image;
+      ahead.decode().catch(() => {});
+      warmed.set(image, ahead);
+    }
   }
 
   // The label turns to this sheet's poster, or back to the original (null).
@@ -183,7 +208,6 @@ export function mountShowcase(
       const a = Object.assign(document.createElement('a'), { className: 'link', href: entry.link, target: '_blank', rel: 'noopener', textContent: 'Full credits ↗' });
       lines.push(a);
     }
-    lines.push(back);
     card.replaceChildren(...lines);
     img.alt = `${title}, ${name}${entry.placeholder ? ' (placeholder)' : ''}`;
   }
