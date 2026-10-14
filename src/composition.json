@@ -72,7 +72,7 @@
       },
       "faces": ["beige", "yellow", "beige", "beige", "beige", "beige"],
       "follow": { "sheet": "e-spiral", "side": "front", "from": 2, "gap": 4.5, "stiffness": 0.3, "restTurn": 5, "tension": 0.4 },
-      "label": { "title": "Poster 004", "name": "Jonas Widmer" }
+      "label": { "title": "Poster 004", "name": "Jonas Widmer", "at": 3.9, "y": 49.5, "side": "back" }
     },
     {
       "id": "white-dark-roll",
@@ -125,7 +125,7 @@
     },
     {
       "id": "n-dark",
-      "position": [35.5, -40, 16.8],
+      "position": [35.5, -40, 16.9],
       "rotation": [0, -143, 0],
       "curl": 0.44,
       "shape": {
@@ -139,11 +139,11 @@
       },
       "faces": ["darkGreen", "green", "yellow", "green", "yellow", "green"],
       "grounded": true,
-      "label": { "title": "Poster 008", "name": "Sven Marti" }
+      "label": { "title": "Poster 008", "name": "Sven Marti", "at": 11.61, "y": 35, "side": "back" }
     },
     {
       "id": "n-wrap",
-      "position": [35.2, -40, 44.9],
+      "position": [35.2, -40, 45],
       "rotation": [0, 154.5, 0],
       "curl": 1,
       "shape": {
@@ -278,7 +278,7 @@
     },
     {
       "id": "plakatsammlung",
-      "position": [-34.4, -40, -2],
+      "position": [-34.4, -40, -2.1],
       "rotation": [0, 19, 0],
       "curl": 0.88,
       "shape": {
