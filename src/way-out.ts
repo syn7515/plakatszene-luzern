@@ -5,10 +5,18 @@ import type { Guide, Rail } from './strip-geometry.ts';
 // the way on from the end that goes first: a smooth line, carrying on from
 // that end's own direction, out of the frame and clear of every other sheet,
 // so the paper passes between the others and never through them (nor through
-// itself). It may leave by the left or the right edge, or by the top: back,
-// away from the viewer, through a gap between the sheets behind, until it
-// has risen out of the frame (the camera looks down on the floor, so what is
-// further back stands higher in the frame).
+// itself). It may leave by a side; by the top, going back, away from the
+// viewer, until it has risen out of the frame (the camera looks down on the
+// floor, so what is further back stands higher in the frame); or by the
+// bottom, coming forward until it has sunk below it. It crosses the edge at
+// whatever slant the line has; it need not turn square to it.
+//
+// The line is one that simply carries on: from the end in its own direction,
+// turning evenly for a while (or not at all) and then evenly again, or
+// straight, until it is out of the frame. Of many such lines, the one that
+// is seen least, shows itself over other paper least and turns least wins.
+// Only if every one would touch paper is the way found across a grid
+// instead, pulled taut and rounded off, a route that winds if it must.
 //
 // The poster is flat and has no shadows, so paper seen sliding in front of
 // other paper reads as passing through it, while paper sliding behind other
@@ -43,11 +51,14 @@ const BARRED = 400; // cost of a cm too close to other paper: only when there is
 const TURNING = 12; // cm of length a radian of turning weighs as much as, choosing between the ends
 const ROUNDING = 3; // times the taut route is rounded off (fewer where rounding would touch paper)
 const UPRIGHT = 15; // cm over which a slanted end straightens up on the way out
+const BENDS = [0, 0.006, -0.006, 0.014, -0.014, 0.025, -0.025, 0.04, -0.04, 0.06, -0.06]; // radians a cm the line turns
+const SPANS = [6, 15, 30, 50, 80]; // cm of the line's first, even turn, before its second
+const LONGEST = 450; // cm a line may run before it has to be out
 const GRID = 2; // cm, the cells other paper is filed in for nearness
 
 type Edges = Pick<Guide, 'bottom' | 'top'>;
 type Point = [number, number];
-export type Exit = 'left' | 'right' | 'top';
+export type Exit = 'left' | 'right' | 'top' | 'bottom';
 
 // The frame the poster is seen in: its half size in cm, and how many degrees
 // the camera looks down.
@@ -224,11 +235,22 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
     const yb = own.bottom[3 * end + 1];
     const yt = own.top[3 * end + 1];
     const zTop = (yb * Math.cos(look) - frame.halfHeight - PAST) / Math.sin(look);
+    const zBottom = (yt * Math.cos(look) + frame.halfHeight + PAST) / Math.sin(look);
 
-    // Still in sight there: inside the side edges, and not yet risen past the top.
-    const inSight = (x: number, z: number) => Math.abs(x) <= half + 1 && up(yb, z) <= frame.halfHeight + 1;
+    // Still in sight there: inside the side edges, not yet risen past the top
+    // nor sunk below the bottom.
+    const inSight = (x: number, z: number) =>
+      Math.abs(x) <= half + 1 && up(yb, z) <= frame.halfHeight + 1 && up(yt, z) >= -frame.halfHeight - 1;
     const out = (x: number, z: number): Exit | null =>
-      up(yb, z) > frame.halfHeight + PAST ? 'top' : x > half + PAST ? 'right' : x < -half - PAST ? 'left' : null;
+      up(yb, z) > frame.halfHeight + PAST
+        ? 'top'
+        : up(yt, z) < -frame.halfHeight - PAST
+          ? 'bottom'
+          : x > half + PAST
+            ? 'right'
+            : x < -half - PAST
+              ? 'left'
+              : null;
     // How the frame shows the paper there: over another sheet (in front of it
     // and overlapping it), hidden behind one (one in front of it covering most
     // of its height), or just seen.
@@ -245,10 +267,10 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
       return over ? 'over' : 'seen';
     };
 
-    // The grid: across the frame and a little past its sides, from the
-    // foremost paper back to where the paper has risen out of the top.
+    // The grid: across the frame and a little past its sides, from where the
+    // paper has sunk below the bottom back to where it has risen out of the top.
     const [x0, x1] = [-half - PAST - 2 * CELL, half + PAST + 2 * CELL];
-    const [z0, z1] = [Math.min(zTop, ez) - 2 * CELL, Math.max(front, ez) + 10];
+    const [z0, z1] = [Math.min(zTop, ez) - 2 * CELL, Math.max(zBottom, front, ez) + 2 * CELL];
     const cols = Math.ceil((x1 - x0) / CELL) + 1;
     const rows = Math.ceil((z1 - z0) / CELL) + 1;
     const xOf = (c: number) => x0 + (c % cols) * CELL;
@@ -262,7 +284,8 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
     const priceOf = (c: number) => {
       if (!Number.isNaN(price[c])) return price[c];
       const [x, z] = [xOf(c), zOf(c)];
-      const beyond = Math.abs(x) > half ? (x > 0 ? 'right' : 'left') : up(yb, z) > frame.halfHeight ? 'top' : null;
+      const beyond =
+        Math.abs(x) > half ? (x > 0 ? 'right' : 'left') : up(yb, z) > frame.halfHeight ? 'top' : up(yt, z) < -frame.halfHeight ? 'bottom' : null;
       if (only && beyond && beyond !== only) return (price[c] = BARRED);
       if (!inSight(x, z)) return (price[c] = 0);
       const how = seen(x, z);
@@ -277,7 +300,61 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
       return BASE * length + onScreen(dx, dz) * 0.5 * (p + q) + straightBack;
     };
 
-    // The cheapest way from just past the end to anywhere out of the frame.
+    // What a straight move from a to b costs, the cells along it sampled.
+    const lineCost = (a: Point, b: Point) => {
+      const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (CELL / 2)));
+      let price = 0;
+      for (let s = 0; s < steps; s++) {
+        const f = (s + 0.5) / steps;
+        price += priceOf(cellAt(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f));
+      }
+      return moveCost(b[0] - a[0], b[1] - a[1], price / steps, price / steps);
+    };
+    const paid = (line: Point[]) => line.slice(1).reduce((sum, b, i) => sum + lineCost(line[i], b), 0);
+
+    // A line that carries on from the end: turning `first` radians a cm for
+    // `span` cm, then `then` a cm, until it is out of the frame; given up once
+    // it touches paper, costs more than `budget`, runs too long, or leaves the
+    // wrong way.
+    const carryOn = (first: number, span: number, then: number, budget: number) => {
+      const points: Point[] = [[ex, ez]];
+      let [x, z, heading, cost] = [ex, ez, Math.atan2(tz, tx), 0];
+      for (let s = 1; s <= LONGEST; s++) {
+        const turn = s <= span ? first : then;
+        heading += turn;
+        const [px, pz] = [x, z];
+        x += Math.cos(heading);
+        z += Math.sin(heading);
+        points.push([x, z]);
+        if (priceOf(cellAt(x, z)) >= BARRED) return null;
+        cost += lineCost([px, pz], [x, z]) + TURNING * Math.abs(turn);
+        if (cost > budget) return null;
+        const exit = out(x, z);
+        if (exit) return only && exit !== only ? null : { points, exit, cost };
+      }
+      return null;
+    };
+    let smooth: { points: Point[]; exit: Exit; cost: number } | null = null;
+    for (const first of BENDS) {
+      for (const span of SPANS) {
+        for (const then of BENDS) {
+          if (then === first && span !== SPANS[0]) continue; // the same line again
+          const line = carryOn(first, span, then, smooth?.cost ?? Infinity);
+          if (line) smooth = line;
+        }
+      }
+    }
+    // The cheapest of them is the way, if there is one that touches no paper.
+    if (smooth) {
+      const [lx, lz] = smooth.points[smooth.points.length - 1];
+      const [px, pz] = smooth.points[smooth.points.length - 2];
+      const line: Point[] = [...smooth.points, [lx + (lx - px) * 10, lz + (lz - pz) * 10]];
+      if (!best || smooth.cost < best.cost) best = { cost: smooth.cost, lead, exit: smooth.exit, line };
+      continue;
+    }
+
+    // Otherwise the cheapest way across the grid, from just past the end to
+    // anywhere out of the frame.
     const start = cellAt(ex + tx * LEAD_IN, ez + tz * LEAD_IN);
     const spent = new Float64Array(cols * rows).fill(Infinity);
     const from = new Int32Array(cols * rows).fill(-1);
@@ -315,15 +392,6 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
 
     // Pulled taut: each point joins the farthest one after it that a straight
     // line reaches for no more than the grid route paid.
-    const lineCost = (a: Point, b: Point) => {
-      const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (CELL / 2)));
-      let price = 0;
-      for (let s = 0; s < steps; s++) {
-        const f = (s + 0.5) / steps;
-        price += priceOf(cellAt(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f));
-      }
-      return moveCost(b[0] - a[0], b[1] - a[1], price / steps, price / steps);
-    };
     const route: Point[] = cells.map((c) => [xOf(c), zOf(c)]);
     const taut: Point[] = [route[0]];
     for (let i = 0; i < route.length - 1; ) {
@@ -336,10 +404,10 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
     // From the end itself, in its own direction, then the taut route, then
     // on out of sight the way it left; rounded off as much as clears paper.
     const exit = out(...taut[taut.length - 1])!;
-    const run: Point = exit === 'top' ? [0, -1] : [exit === 'right' ? 1 : -1, 0];
     const [lx, lz] = taut[taut.length - 1];
-    const raw: Point[] = [[ex, ez], ...taut, [lx + run[0] * 10, lz + run[1] * 10]];
-    const paid = (line: Point[]) => line.slice(1).reduce((sum, b, i) => sum + lineCost(line[i], b), 0);
+    const [px, pz] = taut.length > 1 ? taut[taut.length - 2] : [ex, ez];
+    const away = Math.hypot(lx - px, lz - pz) || 1;
+    const raw: Point[] = [[ex, ez], ...taut, [lx + ((lx - px) / away) * 10, lz + ((lz - pz) / away) * 10]];
     let line = raw;
     for (let passes = ROUNDING; passes > 0; passes--) {
       const rounder = round(raw, passes);
@@ -357,9 +425,12 @@ export function wayOut(own: Edges, others: Edges[], frame: Frame, ds: number, on
   const end = lead === 'tip' ? n : 0;
   const yb = own.bottom[3 * end + 1];
   const yt = own.top[3 * end + 1];
-  const run: Point = exit === 'top' ? [0, -1] : [exit === 'right' ? 1 : -1, 0];
-  const gone = ([x, z]: Point) => (exit === 'top' ? up(yb, z) > frame.halfHeight + PAST : run[0] * x > half + PAST);
   const [lx, lz] = line[line.length - 1];
+  const [qx, qz] = line[line.length - 2];
+  const reach = Math.hypot(lx - qx, lz - qz) || 1;
+  const run: Point = [(lx - qx) / reach, (lz - qz) / reach]; // on as it left
+  const gone = ([x, z]: Point) =>
+    up(yb, z) > frame.halfHeight + PAST || up(yt, z) < -frame.halfHeight - PAST || Math.abs(x) > half + PAST;
   const straight = n * ds + 2 * PAST;
   const along: Point[] = [...line, [lx + run[0] * straight, lz + run[1] * straight]];
   const outward: Point[] = [];
