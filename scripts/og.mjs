@@ -1,20 +1,16 @@
 // Draws the social card (scripts/og/) to public/og-image-<hash>.png and
 // points index.html's tags at it. The name carries a hash of the image
 // because chat apps and X cache a card by its image's URL: a changed card
-// gets a new one. Needs Chrome (CHROME may name another binary) and the ABC
-// Areal files in public/fonts, or the name on the card is set in Helvetica.
+// gets a new one. Needs Chrome (CHROME may name another binary).
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { createServer } from 'vite';
 
 const chrome = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-for (const font of ['ABCAreal-Regular.woff2', 'ABCAreal-Medium.woff2']) {
-  if (!existsSync(`public/fonts/${font}`)) throw new Error(`public/fonts/${font} is missing; the card would be set in Helvetica`);
-}
 
 const server = await createServer({ logLevel: 'error', server: { port: 0 } });
 await server.listen();
